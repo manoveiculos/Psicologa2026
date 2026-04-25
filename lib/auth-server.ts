@@ -14,7 +14,8 @@ export interface AuthUser {
  * Valida o token do Firebase e mapeia para o usuário do Supabase via e-mail.
  */
 export async function getAuthenticatedUser(): Promise<AuthUser | null> {
-  const token = cookies().get("firebase-token")?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("firebase-token")?.value;
   if (!token) return null;
 
   try {
@@ -28,19 +29,21 @@ export async function getAuthenticatedUser(): Promise<AuthUser | null> {
     if (!email) return null;
 
     // Busca o usuário no Supabase Auth usando o Admin SDK (service_role)
-    // Usamos a lista de usuários pois não podemos fazer query direta em auth.users facilmente via RPC/PostgREST sem permissões extras
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+    // Aumentamos o limite para garantir que o usuário seja encontrado em bases maiores
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000
+    });
     
     if (error) {
-      console.error("Erro ao listar usuários no Supabase:", error);
+      console.error("Erro crítico: falha ao listar usuários no Supabase (verifique a SERVICE_ROLE_KEY):", error);
       return null;
     }
 
-    const supabaseUser = users.find(u => u.email === email);
+    const supabaseUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (!supabaseUser) {
-      console.warn(`Usuário do Firebase (${email}) não encontrado no Supabase.`);
-      // Opcional: Criar o usuário no Supabase se ele for permitido
+      console.warn(`Atenção: E-mail do Firebase (${email}) não tem um usuário correspondente no Supabase Auth.`);
       return null;
     }
 
@@ -50,7 +53,7 @@ export async function getAuthenticatedUser(): Promise<AuthUser | null> {
       firebaseUid
     };
   } catch (error) {
-    console.error("Erro na autenticação do servidor:", error);
+    console.error("Erro de sistema na função getAuthenticatedUser:", error);
     return null;
   }
 }

@@ -1,12 +1,16 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import { revalidatePath } from "next/cache";
 
 export async function atualizarDadosPaciente(patientId: string, data: any) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) throw new Error("Não autorizado");
+
+  const sb = await supabaseServer();
+
 
   const { error } = await sb
     .from("patients_psicologa")
@@ -33,9 +37,11 @@ export async function atualizarDadosPaciente(patientId: string, data: any) {
 }
 
 export async function uploadAnexoPaciente(patientId: string, file: File, fileName: string) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) throw new Error("Não autorizado");
+
+  const sb = await supabaseServer();
+
 
   const storagePath = `${patientId}/${Date.now()}-${fileName}`;
   
@@ -63,9 +69,11 @@ export async function uploadAnexoPaciente(patientId: string, file: File, fileNam
 }
 
 export async function deletarAnexoPaciente(documentId: string, filePath: string, patientId: string) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) throw new Error("Não autorizado");
+
+  const sb = await supabaseServer();
+
 
   // Deleta do Storage
   const { error: storageError } = await sb.storage
@@ -87,9 +95,11 @@ export async function deletarAnexoPaciente(documentId: string, filePath: string,
 }
 
 export async function deletarProntuario(noteId: string, patientId: string) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) throw new Error("Não autorizado");
+
+  const sb = await supabaseServer();
+
 
   const { error } = await sb
     .from("clinical_notes_psicologa")
@@ -102,9 +112,11 @@ export async function deletarProntuario(noteId: string, patientId: string) {
 }
 
 export async function deletarAgendamento(appointmentId: string, patientId: string) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) throw new Error("Não autorizado");
+
+  const sb = await supabaseServer();
+
 
   const { error } = await sb
     .from("appointments_psicologa")

@@ -2,12 +2,16 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import { revalidatePath } from "next/cache";
 
 export async function criarLancamento(formData: FormData) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return { error: "Não autorizado" };
+
+  const sb = await supabaseServer();
+
 
   const flux = formData.get("fluxo"); // 'entrada' ou 'saida'
   const valor = Number(formData.get("valor"));
@@ -52,13 +56,18 @@ export async function criarLancamento(formData: FormData) {
 }
 
 export async function alternarStatus(id: string, atual: string) {
+  const user = await getAuthenticatedUser();
+  if (!user) return { error: "Não autorizado" };
+
   const sb = await supabaseServer();
   const novoStatus = atual === "pago" ? "pendente" : "pago";
   
   const { error } = await sb
     .from("appointments_psicologa")
     .update({ status_recebimento: novoStatus })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
+
 
   if (error) return { error: error.message };
   revalidatePath("/financeiro");
@@ -66,9 +75,11 @@ export async function alternarStatus(id: string, atual: string) {
 }
 
 export async function excluirTransacao(id: string) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return { error: "Não autorizado" };
+
+  const sb = await supabaseServer();
+
 
   const { error } = await sb.from("appointments_psicologa").delete().eq("id", id).eq("user_id", user.id);
   if (error) return { error: error.message };
@@ -78,9 +89,11 @@ export async function excluirTransacao(id: string) {
 }
 
 export async function excluirDespesa(id: string) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return { error: "Não autorizado" };
+
+  const sb = await supabaseServer();
+
 
   const { error } = await sb.from("expenses_psicologa").delete().eq("id", id).eq("user_id", user.id);
   if (error) return { error: error.message };
@@ -89,6 +102,9 @@ export async function excluirDespesa(id: string) {
   return { success: true };
 }
 export async function atualizarTransacao(id: string, data: any) {
+  const user = await getAuthenticatedUser();
+  if (!user) return { error: "Não autorizado" };
+
   const sb = await supabaseServer();
   const { error } = await sb
     .from("appointments_psicologa")
@@ -98,7 +114,9 @@ export async function atualizarTransacao(id: string, data: any) {
       valor_bruto: Number(data.valor),
       tipo: data.tipo === "convenio" ? "plano" : "particular",
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
+
 
   if (error) return { error: error.message };
   revalidatePath("/financeiro");
@@ -106,6 +124,9 @@ export async function atualizarTransacao(id: string, data: any) {
 }
 
 export async function atualizarDespesa(id: string, data: any) {
+  const user = await getAuthenticatedUser();
+  if (!user) return { error: "Não autorizado" };
+
   const sb = await supabaseServer();
   const { error } = await sb
     .from("expenses_psicologa")
@@ -115,7 +136,9 @@ export async function atualizarDespesa(id: string, data: any) {
       descricao: data.descricao,
       valor: Number(data.valor),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
+
 
   if (error) return { error: error.message };
   revalidatePath("/financeiro");
@@ -123,9 +146,11 @@ export async function atualizarDespesa(id: string, data: any) {
 }
 
 export async function excluirTransacoesEmMassa(ids: string[]) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return { error: "Não autorizado" };
+
+  const sb = await supabaseServer();
+
 
   const { error } = await sb.from("appointments_psicologa").delete().in("id", ids).eq("user_id", user.id);
   if (error) return { error: error.message };
@@ -135,9 +160,11 @@ export async function excluirTransacoesEmMassa(ids: string[]) {
 }
 
 export async function atualizarStatusEmMassa(ids: string[], novoStatus: string) {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return { error: "Não autorizado" };
+
+  const sb = await supabaseServer();
+
 
   const { error } = await sb
     .from("appointments_psicologa")

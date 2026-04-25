@@ -1,4 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import { BRL, APP_TZ } from "@/lib/utils";
 import { slotsLivresSemana, type HorarioTrabalho } from "@/lib/slots";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
@@ -9,9 +11,11 @@ import { Calendar, Users, DollarSign, ClipboardList, Clock, ArrowRight, Plus } f
 export const dynamic = "force-dynamic";
 
 async function loadData() {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return null;
+
+  const sb = await supabaseServer();
+
 
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });

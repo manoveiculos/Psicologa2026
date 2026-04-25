@@ -1,4 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import { BRL } from "@/lib/utils";
 import { Suspense } from "react";
 import { startOfMonth, endOfMonth, format, parse, startOfWeek, endOfWeek } from "date-fns";
@@ -23,9 +25,11 @@ interface PageProps {
 
 export default async function FinanceiroPage(props: { searchParams: Promise<PageProps["searchParams"]> }) {
   const searchParams = await props.searchParams;
+  const user = await getAuthenticatedUser();
+  if (!user) return <p className="p-8 text-center text-slate-500">Faça login para ver o financeiro.</p>;
+
   const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return <p>Faça login para ver o financeiro.</p>;
+
 
   // Parsing data de filtro
   const now = new Date();

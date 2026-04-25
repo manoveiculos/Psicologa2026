@@ -3,24 +3,15 @@ import { createClient as createSbClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 export async function supabaseServer() {
-  const cookieStore = await cookies();
-  return createServerClient(
+  return createSbClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (list: { name: string; value: string; options: CookieOptions }[]) => {
-          try {
-            list.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // server component context — ignore
-          }
-        },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
-    },
+    }
   );
 }
 

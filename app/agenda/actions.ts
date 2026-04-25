@@ -1,13 +1,17 @@
 "use server";
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import { calendarClient } from "@/lib/google";
 import { encryptText } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 
 async function getUserAndCalendar() {
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) throw new Error("não autenticado");
+
+  const sb = await supabaseServer();
+
   const { data: s } = await sb
     .from("settings_psicologa")
     .select("google_refresh_token,google_calendar_id")

@@ -1,4 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import { BRL } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { subDays } from "date-fns";
@@ -10,9 +12,11 @@ export const dynamic = "force-dynamic";
 
 async function criarPaciente(formData: FormData) {
   "use server";
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return;
+
+  const sb = await supabaseServer();
+
 
   await sb.from("patients_psicologa").insert({
     user_id: user.id,
@@ -26,9 +30,11 @@ async function criarPaciente(formData: FormData) {
 }
 
 export default async function PacientesPage() {
+  const user = await getAuthenticatedUser();
+  if (!user) return <p className="p-8 text-center text-slate-500">Faça login para ver pacientes.</p>;
+
   const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return <p>Faça login para ver pacientes.</p>;
+
 
   const last7Days = subDays(new Date(), 7);
 

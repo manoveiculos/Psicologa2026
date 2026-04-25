@@ -1,4 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import CalendarView from "@/components/CalendarView";
 import { Suspense } from "react";
 import { startOfMonth, endOfMonth, subWeeks, addWeeks } from "date-fns";
@@ -6,9 +8,11 @@ import { startOfMonth, endOfMonth, subWeeks, addWeeks } from "date-fns";
 export const dynamic = "force-dynamic";
 
 export default async function AgendaPage() {
+  const user = await getAuthenticatedUser();
+  if (!user) return <p className="p-8 text-center text-slate-500">Faça login para ver a agenda.</p>;
+
   const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return <p>Faça login para ver a agenda.</p>;
+
 
   const now = new Date();
   const from = subWeeks(startOfMonth(now), 2);
