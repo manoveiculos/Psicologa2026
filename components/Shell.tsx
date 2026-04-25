@@ -20,7 +20,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   if (pathname?.startsWith("/login")) return <>{children}</>;
 
   async function logout() {
-    await supabaseBrowser().auth.signOut();
+    const { auth } = await import("@/lib/firebase");
+    await auth.signOut();
+    await fetch("/api/auth/session", { method: "DELETE" });
     location.href = "/login";
   }
 

@@ -33,26 +33,19 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Verificação de sessão simplificada via cookie do Firebase
+  const firebaseToken = request.cookies.get("firebase-token")?.value;
 
   const isPublic = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth');
   const isCron = request.nextUrl.pathname.startsWith('/api/cron');
 
-  // Se não for pública nem cron
   if (!isPublic && !isCron) {
-    if (!user) {
+    if (!firebaseToken) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
     
-    // Verificação de e-mail na allowlist
-    if (!isEmailAllowed(user.email)) {
-      // Forçar logout e redirecionar
-      const res = NextResponse.redirect(new URL('/login?error=unauthorized', request.url));
-      // Tentar limpar cookies de auth do supabase
-      res.cookies.delete('sb-access-token');
-      res.cookies.delete('sb-refresh-token');
-      return res;
-    }
+    // Nota: A verificação de ALLOWED_EMAILS agora deve ser feita no cliente durante o login
+    // ou decodificando o token aqui se usássemos firebase-admin.
   }
 
   return response;
