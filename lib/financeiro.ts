@@ -10,6 +10,8 @@ export interface Transacao {
   status_recebimento: StatusRecebimento;
   data_prevista?: string;
   data_realizada: string;
+  porcentagem_repasse?: number;
+  id_profissional?: string;
 }
 
 export interface Despesa {
@@ -23,6 +25,7 @@ export interface ResumoFinanceiro {
   faturamentoBruto: number;
   faturamentoParticular: number;
   faturamentoConvenio: number;
+  totalRepasses: number;
   impostosEstimados: number;
   totalDespesas: number;
   receitaLiquidaReal: number;
@@ -49,17 +52,24 @@ export function calcularResumoFinanceiro(
 
   const faturamentoBruto = faturamentoParticular + faturamentoConvenio;
   
+  const totalRepasses = transacoes.reduce((acc, t) => {
+    if (t.porcentagem_repasse && t.porcentagem_repasse > 0) {
+      return acc + (t.valor_bruto * (t.porcentagem_repasse / 100));
+    }
+    return acc;
+  }, 0);
+
   const impostosEstimados = faturamentoBruto * (aliquotaImposto / 100);
-  
   const totalDespesas = despesas.reduce((acc, d) => acc + d.valor, 0);
 
-  // Receita Líquida = Faturamento Bruto - Impostos - Despesas
-  const receitaLiquidaReal = faturamentoBruto - impostosEstimados - totalDespesas;
+  // Receita Líquida Real = Bruto - Repasses - Impostos - Despesas
+  const receitaLiquidaReal = faturamentoBruto - totalRepasses - impostosEstimados - totalDespesas;
 
   return {
     faturamentoBruto,
     faturamentoParticular,
     faturamentoConvenio,
+    totalRepasses,
     impostosEstimados,
     totalDespesas,
     receitaLiquidaReal,

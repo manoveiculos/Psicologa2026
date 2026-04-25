@@ -1,5 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { format, differenceInYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -116,12 +117,16 @@ export default async function PatientDetailsPage({ params }: { params: Promise<{
         </div>
       </div>
 
+
+
       {/* Abas e Conteúdo */}
-      <PatientTabs 
-        patient={patient} 
-        appointments={appointments || []} 
-        documents={documents || []}
-      />
+      <Suspense fallback={<div className="p-8 text-center text-slate-400">Carregando detalhes...</div>}>
+        <PatientTabs 
+          patient={patient} 
+          appointments={appointments || []} 
+          documents={documents || []}
+        />
+      </Suspense>
     </div>
   );
 }

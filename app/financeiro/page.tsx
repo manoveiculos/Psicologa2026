@@ -1,12 +1,13 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { BRL } from "@/lib/utils";
+import { Suspense } from "react";
 import { startOfMonth, endOfMonth, format, parse, startOfWeek, endOfWeek } from "date-fns";
 import { calcularResumoFinanceiro, Transacao, Despesa } from "@/lib/financeiro";
 import FiltrosFinanceiro from "./FiltrosFinanceiro";
 import FormLancamento from "./FormLancamento";
 import TabelaTransacoes from "./TabelaTransacoes";
 import BtnAcoesDespesa from "./BtnAcoesDespesa";
-import { CreditCard, TrendingUp, Landmark, Receipt, PieChart, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { CreditCard, TrendingUp, Landmark, Receipt, PieChart, ArrowDownCircle, ArrowUpCircle, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,9 @@ export default async function FinanceiroPage(props: { searchParams: Promise<Page
   let query = sb.from("appointments_psicologa")
     .select(`
       *,
-      patient:patients_psicologa(nome)
+      patient:patients_psicologa(nome),
+      porcentagem_repasse,
+      id_profissional
     `)
     .eq("user_id", user.id)
     .neq("status", "cancelado") // Não mostrar cancelados no financeiro por padrão
@@ -91,6 +94,8 @@ export default async function FinanceiroPage(props: { searchParams: Promise<Page
     status_recebimento: a.status_recebimento ?? "pendente",
     data_prevista: a.data_prevista,
     data_realizada: a.inicio,
+    porcentagem_repasse: Number(a.porcentagem_repasse ?? 0),
+    id_profissional: a.id_profissional,
     pacienteNome: (a as any).patient?.nome,
   }));
 
@@ -116,22 +121,31 @@ export default async function FinanceiroPage(props: { searchParams: Promise<Page
         <h2 className="text-2xl font-semibold text-slate-800">Financeiro · {tituloFiltro}</h2>
       </div>
 
-      <FiltrosFinanceiro />
+      <Suspense fallback={<div className="h-20 w-full animate-pulse bg-slate-50 rounded-xl" />}>
+        <FiltrosFinanceiro />
+      </Suspense>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-5">
         <Card 
-          title="Particular (Bruto)" 
+          title="Particular" 
           value={BRL.format(resumo.faturamentoParticular)} 
           hint={`${transacoes.filter(t => t.tipo_receita === 'particular').length} sessões`}
           icon={ArrowUpCircle}
           iconColor="text-green-500"
         />
         <Card 
-          title="Plano/Convênio (Bruto)" 
+          title="Convênio" 
           value={BRL.format(resumo.faturamentoConvenio)} 
           hint={`${transacoes.filter(t => t.tipo_receita === 'convenio').length} sessões`}
           icon={Landmark}
           iconColor="text-blue-500"
+        />
+        <Card 
+          title="Repasses" 
+          value={BRL.format(resumo.totalRepasses)} 
+          hint="Total a pagar profissionais"
+          icon={Users}
+          iconColor="text-orange-500"
         />
         <Card 
           title="Despesas" 
@@ -144,7 +158,7 @@ export default async function FinanceiroPage(props: { searchParams: Promise<Page
           title="Saldo Líquido" 
           value={BRL.format(resumo.receitaLiquidaReal)} 
           className="bg-brand/5 border-brand/20 shadow-sm"
-          hint="Total menos impostos e despesas" 
+          hint="Líquido após todas deduções" 
           icon={TrendingUp}
           iconColor="text-brand"
         />
@@ -206,11 +220,15 @@ export default async function FinanceiroPage(props: { searchParams: Promise<Page
                 <span className="text-sm font-medium text-red-500">-{BRL.format(resumo.impostosEstimados)}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                <span className="text-sm text-slate-500">Repasses Profissionais</span>
+                <span className="text-sm font-medium text-orange-500">-{BRL.format(resumo.totalRepasses)}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-50">
                 <span className="text-sm text-slate-500">Despesas Totais</span>
                 <span className="text-sm font-medium text-red-600">-{BRL.format(resumo.totalDespesas)}</span>
               </div>
               <div className="pt-4 flex justify-between items-center">
-                <span className="text-base font-bold text-slate-800">Resultado</span>
+                <span className="text-base font-bold text-slate-800">Resultado Líquido</span>
                 <span className={`text-base font-bold ${resumo.receitaLiquidaReal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {BRL.format(resumo.receitaLiquidaReal)}
                 </span>

@@ -25,14 +25,19 @@ export async function createAppointment(input: {
   valor_bruto?: number | null;
   percentual_clinica?: number | null;
 }) {
-  const { sb, user, settings } = await getUserAndCalendar();
+  const { sb, user } = await getUserAndCalendar();
+  const { data: settingsData } = await sb
+    .from("settings_psicologa")
+    .select("google_refresh_token, google_calendar_id, percentual_repasse_padrao")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   let googleEventId: string | null = null;
-  if (settings?.google_refresh_token) {
+  if (settingsData?.google_refresh_token) {
     try {
-      const cal = calendarClient(settings.google_refresh_token);
+      const cal = calendarClient(settingsData.google_refresh_token);
       const resp = await cal.events.insert({
-        calendarId: settings.google_calendar_id ?? "primary",
+        calendarId: settingsData.google_calendar_id ?? "primary",
         requestBody: {
           summary: input.titulo,
           start: { dateTime: input.inicio },
@@ -56,6 +61,7 @@ export async function createAppointment(input: {
     tipo: input.tipo,
     patient_id: input.patient_id || null,
     valor_bruto: input.valor_bruto ?? null,
+    porcentagem_repasse: Number(settingsData?.percentual_repasse_padrao ?? 0),
     status_recebimento: "pendente",
   });
   if (error) throw new Error(error.message);

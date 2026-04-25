@@ -17,6 +17,7 @@ async function salvarSettings(formData: FormData) {
     user_id: user.id,
     duracao_sessao_minutos: Number(formData.get("duracao") ?? 50),
     aliquota_imposto: Number(formData.get("aliquota") ?? 0),
+    percentual_repasse_padrao: Number(formData.get("repasse_padrao") ?? 0),
     evolution_url: String(formData.get("evo_url") ?? "") || null,
     evolution_api_key: String(formData.get("evo_key") ?? "") || null,
     evolution_instance: String(formData.get("evo_instance") ?? "") || null,

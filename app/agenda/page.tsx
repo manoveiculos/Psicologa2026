@@ -1,5 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import CalendarView from "@/components/CalendarView";
+import { Suspense } from "react";
 import { startOfMonth, endOfMonth, subWeeks, addWeeks } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,9 @@ export default async function AgendaPage() {
           Conecte seu Google Calendar em <a href="/configuracoes" className="underline">Configurações</a> para sincronizar automaticamente.
         </div>
       )}
-      <CalendarView appts={(appts ?? []) as any} patients={(patients ?? []) as any} />
+      <Suspense fallback={<div className="h-96 w-full animate-pulse bg-slate-50 rounded-xl" />}>
+        <CalendarView appts={(appts ?? []) as any} patients={(patients ?? []) as any} />
+      </Suspense>
     </div>
   );
 }
