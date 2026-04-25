@@ -15,7 +15,7 @@ interface WhatsAppConnectionProps {
 }
 
 export function WhatsAppConnection({ settings: s, userPhone }: WhatsAppConnectionProps) {
-  const [status, setStatus] = useState<"conectado" | "desconectado" | "aguardando" | "erro">("desconectado");
+  const [status, setStatus] = useState<"conectado" | "desconectado" | "aguardando" | "erro" | "desconfigurado">("desconectado");
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -24,7 +24,7 @@ export function WhatsAppConnection({ settings: s, userPhone }: WhatsAppConnectio
     if (!s.evolution_url || !s.evolution_api_key || !s.evolution_instance) return;
     try {
       const res = await getWhatsAppStatus(s.evolution_url, s.evolution_api_key, s.evolution_instance);
-      setStatus(res.status);
+      setStatus(res.status as any);
       if (res.status === "conectado") {
         setQrCode(null);
       }
@@ -136,11 +136,14 @@ export function WhatsAppConnection({ settings: s, userPhone }: WhatsAppConnectio
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
                   status === "conectado" ? "bg-emerald-100 text-emerald-700" :
                   status === "aguardando" ? "bg-amber-100 text-amber-700 animate-pulse" :
-                  status === "erro" ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-500"
+                  status === "erro" ? "bg-red-100 text-red-700" : 
+                  status === "desconfigurado" ? "bg-slate-100 text-slate-400 border border-slate-200" :
+                  "bg-slate-100 text-slate-500"
                 }`}>
                   {status === "conectado" ? "Conectado" : 
                    status === "aguardando" ? "Aguardando Scanner" :
-                   status === "erro" ? "Erro de Conexão" : "Desconectado"}
+                   status === "erro" ? "Erro de Conexão" : 
+                   status === "desconfigurado" ? "Não Configurado" : "Desconectado"}
                 </span>
                 <button onClick={checkStatus} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                   <RefreshCw className={`w-3.5 h-3.5 ${isPending ? "animate-spin" : ""}`} />
