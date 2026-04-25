@@ -35,8 +35,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Se estiver em rota protegida
-  if (!request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
+  const isPublic = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth');
+  const isCron = request.nextUrl.pathname.startsWith('/api/cron');
+
+  // Se não for pública nem cron
+  if (!isPublic && !isCron) {
     if (!user) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
