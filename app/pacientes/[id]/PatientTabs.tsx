@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Plus
 } from "lucide-react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BRL } from "@/lib/utils";
@@ -286,10 +287,12 @@ function AgendaTab({ appointments }: { appointments: any[] }) {
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     startTransition(async () => {
       try {
-        await updateAppointmentDetails(editingAppt.id, {
-          status: formData.get("status"),
+        await updateAppointmentDetails({
+          id: editingAppt.id,
+          status: formData.get("status") as string,
+          tipo: editingAppt.tipo,
           valor_bruto: Number(formData.get("valor")),
-          status_recebimento: formData.get("pagamento")
+          prontuario_status: editingAppt.prontuario_status || "pendente"
         });
         setEditingAppt(null);
       } catch (e) { alert("Erro ao salvar."); }

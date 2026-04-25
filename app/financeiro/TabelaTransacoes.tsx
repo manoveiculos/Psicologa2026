@@ -5,7 +5,7 @@ import { BRL } from "@/lib/utils";
 import { format } from "date-fns";
 import { alternarStatus, excluirTransacao, atualizarTransacao, excluirTransacoesEmMassa, atualizarStatusEmMassa } from "./actions";
 import { useState, useTransition, useMemo } from "react";
-import { Trash2, Edit, X, Save, CheckSquare, Square, CheckCircle } from "lucide-react";
+import { Trash2, Edit, X, Save, CheckSquare, Square, CheckCircle, Clock } from "lucide-react";
 
 interface TransacaoExt {
   id: string;
