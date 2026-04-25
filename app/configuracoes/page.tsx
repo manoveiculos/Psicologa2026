@@ -1,4 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 import { revalidatePath } from "next/cache";
 import { WhatsAppConnection } from "./WhatsAppConnection";
 import { ClinicSettings } from "./ClinicSettings";
@@ -9,12 +11,14 @@ export const dynamic = "force-dynamic";
 
 async function salvarSettings(formData: FormData) {
   "use server";
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return;
+
+  const sb = await supabaseServer();
 
   await sb.from("settings_psicologa").upsert({
     user_id: user.id,
+
     duracao_sessao_minutos: Number(formData.get("duracao") ?? 50),
     aliquota_imposto: Number(formData.get("aliquota") ?? 0),
     percentual_repasse_padrao: Number(formData.get("repasse_padrao") ?? 0),
@@ -31,11 +35,13 @@ async function salvarSettings(formData: FormData) {
 
 async function desconectarGoogle() {
   "use server";
-  const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) return;
 
+  const sb = await supabaseServer();
+
   await sb.from("settings_psicologa").update({
+
     google_refresh_token: null,
     google_access_token: null,
     updated_at: new Date().toISOString(),
@@ -45,9 +51,11 @@ async function desconectarGoogle() {
 }
 
 export default async function ConfiguracoesPage() {
+  const user = await getAuthenticatedUser();
+  if (!user) return <p className="p-8 text-center text-slate-500">Faça login para configurar.</p>;
+
   const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return <p>Faça login para configurar.</p>;
+
 
   const { data: s } = await sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle();
 

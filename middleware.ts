@@ -44,8 +44,24 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
     
-    // Nota: A verificação de ALLOWED_EMAILS agora deve ser feita no cliente durante o login
-    // ou decodificando o token aqui se usássemos firebase-admin.
+    try {
+      // Decodificação básica do JWT (payload é a segunda parte)
+      const payloadBase64 = firebaseToken.split('.')[1];
+      if (payloadBase64) {
+        const payload = JSON.parse(atob(payloadBase64));
+        const email = payload.email;
+        
+        if (!isEmailAllowed(email)) {
+          console.warn(`Acesso negado para e-mail não autorizado: ${email}`);
+          const response = NextResponse.redirect(new URL('/login?error=unauthorized', request.url));
+          response.cookies.delete("firebase-token");
+          return response;
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao decodificar token no middleware:", e);
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
   return response;
