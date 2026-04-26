@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   // Verificação de sessão simplificada via cookie do Firebase
   const firebaseToken = request.cookies.get("firebase-token")?.value;
 
-  const isPublic = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth');
+  const isPublic = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth') || request.nextUrl.pathname.startsWith('/horarios-livres');
   const isCron = request.nextUrl.pathname.startsWith('/api/cron');
 
   if (!isPublic && !isCron) {

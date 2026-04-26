@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { WhatsAppConnection } from "./WhatsAppConnection";
 import { ClinicSettings } from "./ClinicSettings";
 import { ReminderAutomation } from "./ReminderAutomation";
-import { Settings, Shield, Globe, Bell, Zap } from "lucide-react";
+import { Settings, Shield, Globe, Bell, Zap, Clock } from "lucide-react";
+import { WorkingHoursManager } from "./WorkingHoursManager";
+import { HorarioTrabalho } from "@/lib/slots";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +131,31 @@ export default async function ConfiguracoesPage() {
         </section>
       </div>
 
-      {/* Seção 3: Automação de Lembretes */}
+      {/* Seção 3: Gestão de Horários */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <Clock className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800">Gestão de Horários</h3>
+            <p className="text-xs text-slate-400">Defina sua disponibilidade semanal para agendamentos públicos.</p>
+          </div>
+          <div className="ml-auto">
+            <a 
+              href={`/horarios-livres?id=${user.id}`} 
+              target="_blank" 
+              className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+            >
+              <Globe className="h-3 w-3" />
+              Ver Página Pública
+            </a>
+          </div>
+        </div>
+        <WorkingHoursManager initialHorario={s?.horario_trabalho as HorarioTrabalho} />
+      </section>
+
+      {/* Seção 4: Automação de Lembretes */}
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
           <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">

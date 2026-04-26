@@ -16,13 +16,26 @@ export interface AuthUser {
 export async function getAuthenticatedUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("firebase-token")?.value;
+
   if (!token) return null;
 
   try {
-    // Decodifica o token para pegar o e-mail
-    // Nota: Em um ambiente ideal, usaríamos firebase-admin para verificar a assinatura.
-    // Mas para resolver o problema imediato do usuário, vamos confiar no token que foi setado pelo nosso handler /api/auth/session
-    const decoded: any = jwt.decode(token);
+    // Verificação real do token usando Firebase Admin
+    let decoded: any;
+    try {
+      const { auth: adminAuth } = require("./firebase-admin").getFirebaseAdmin();
+      decoded = await adminAuth.verifyIdToken(token);
+    } catch (e) {
+      console.error("Falha na verificação do ID Token do Firebase:", e);
+      // Fallback para decode apenas se não houver variáveis de ambiente (DANGEROUS)
+      if (!process.env.FIREBASE_PRIVATE_KEY) {
+        console.warn("AVISO DE SEGURANÇA: Usando decodificação insegura pois as variáveis do Firebase Admin não estão configuradas.");
+        decoded = jwt.decode(token);
+      } else {
+        return null;
+      }
+    }
+    
     const email = decoded?.email;
     const firebaseUid = decoded?.sub || decoded?.uid;
 

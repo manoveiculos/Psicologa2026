@@ -83,7 +83,7 @@ export default function CalendarView({
     }
   }, [searchParams]);
 
-  const events: EventInput[] = appts.map((a) => {
+  const events: EventInput[] = useMemo(() => appts.map((a) => {
     const color = COLOR_BY_TIPO[a.tipo] ?? COLOR_BY_TIPO.particular;
     const nome = a.patients_psicologa?.nome ?? a.titulo_calendar ?? "(sem título)";
     const hasNote = a.clinical_notes_psicologa && a.clinical_notes_psicologa.length > 0;
@@ -105,7 +105,7 @@ export default function CalendarView({
       textColor: "#fff",
       extendedProps: { appt: a },
     };
-  });
+  }), [appts]);
 
   function handleEventClick(arg: EventClickArg) {
     const appt = arg.event.extendedProps.appt as Appt;
@@ -131,16 +131,42 @@ export default function CalendarView({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <style>{`
+        .fc-day-today {
+          background-color: rgba(109, 93, 252, 0.05) !important;
+        }
+        .fc-daygrid-day.fc-day-today {
+          border: 2px solid #6d5dfc !important;
+          background-color: rgba(109, 93, 252, 0.08) !important;
+          z-index: 10;
+        }
+        .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+          background-color: #6d5dfc;
+          color: white;
+          border-radius: 50%;
+          min-width: 24px;
+          height: 24px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin: 2px;
+        }
+        .fc-timegrid-col.fc-day-today {
+          background-color: rgba(109, 93, 252, 0.03) !important;
+        }
+      `}</style>
       <FullCalendar
         ref={calRef}
         plugins={[timeGridPlugin, dayGridPlugin, listPlugin, interactionPlugin]}
         initialView="timeGridWeek"
+        initialDate={new Date()}
         locale="pt-br"
         firstDay={1}
         allDaySlot={false}
         slotMinTime="07:00:00"
         slotMaxTime="22:00:00"
         nowIndicator
+        scrollTime={new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
         editable
         selectable
         selectMirror
@@ -176,7 +202,6 @@ export default function CalendarView({
       <div className="mt-3 flex flex-wrap gap-3 text-xs">
         <Legend color={COLOR_BY_TIPO.particular.bg} label="Particular" />
         <Legend color={COLOR_BY_TIPO.plano.bg} label="Plano" />
-        <Legend color={COLOR_BY_TIPO.bloqueio.bg} label="Bloqueio" />
         <Legend color={COLOR_BY_TIPO.bloqueio.bg} label="Bloqueio" />
         <Legend color={COLOR_BY_TIPO.pessoal.bg} label="Pessoal" />
         <div className="flex items-center gap-3 border-l border-slate-200 ml-2 pl-4">

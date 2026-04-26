@@ -6,6 +6,18 @@ import { calendarClient } from "@/lib/google";
 import { encryptText } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 
+import { z } from "zod";
+
+const appointmentSchema = z.object({
+  inicio: z.string().datetime(),
+  fim: z.string().datetime(),
+  titulo: z.string().min(1, "Título é obrigatório"),
+  tipo: z.enum(["particular", "plano", "bloqueio", "pessoal"]),
+  patient_id: z.string().uuid().nullable().optional(),
+  valor_bruto: z.number().nullable().optional(),
+  percentual_clinica: z.number().nullable().optional(),
+});
+
 async function getUserAndCalendar() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error("não autenticado");
@@ -20,15 +32,8 @@ async function getUserAndCalendar() {
   return { sb, user, settings: s };
 }
 
-export async function createAppointment(input: {
-  inicio: string;
-  fim: string;
-  titulo: string;
-  tipo: string;
-  patient_id?: string | null;
-  valor_bruto?: number | null;
-  percentual_clinica?: number | null;
-}) {
+export async function createAppointment(rawInput: z.infer<typeof appointmentSchema>) {
+  const input = appointmentSchema.parse(rawInput);
   const { sb, user } = await getUserAndCalendar();
   const { data: settingsData } = await sb
     .from("settings_psicologa")
@@ -137,17 +142,15 @@ export async function deleteAppointment(id: string) {
   revalidatePath("/");
 }
 
-export async function updateAppointmentDetails(input: {
-  id: string;
-  patient_id?: string | null;
-  tipo: string;
-  valor_bruto?: number | null;
-  percentual_clinica?: number | null;
-  status: string;
-  prontuario_status: string;
-  prontuario_texto?: string;
-  titulo?: string;
-}) {
+const updateSchema = appointmentSchema.partial().extend({
+  id: z.string().uuid(),
+  status: z.enum(["agendado", "realizado", "faltou", "cancelado"]),
+  prontuario_status: z.enum(["pendente", "feito", "nao_aplicavel"]),
+  prontuario_texto: z.string().optional(),
+});
+
+export async function updateAppointmentDetails(rawInput: z.infer<typeof updateSchema>) {
+  const input = updateSchema.parse(rawInput);
   const { sb, user, settings } = await getUserAndCalendar();
 
   const update: Record<string, unknown> = {
