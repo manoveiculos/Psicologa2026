@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { Plus, Trash2, Clock, Calendar, Save } from "lucide-react";
 import { toast } from "sonner";
-import { supabaseBrowser } from "@/lib/supabase/client";
 import { HorarioTrabalho } from "@/lib/slots";
+import { updateSettingsAction } from "./actions";
 
 const DIAS_SEMANA = [
   { id: "0", label: "Domingo" },
@@ -56,17 +56,11 @@ export function WorkingHoursManager({ initialHorario, userId }: WorkingHoursMana
   };
 
   async function handleSalvar() {
-    const sb = supabaseBrowser();
-    
     startTransition(async () => {
       try {
-        const { error } = await sb.from("settings_psicologa").upsert({
-          user_id: userId,
+        await updateSettingsAction({
           horario_trabalho: horario,
-          updated_at: new Date().toISOString(),
         });
-
-        if (error) throw error;
         toast.success("Grade de horários salva com sucesso!");
       } catch (error) {
         console.error(error);
@@ -105,44 +99,46 @@ export function WorkingHoursManager({ initialHorario, userId }: WorkingHoursMana
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {intervalos.map((intervalo, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <div className="relative">
+                  <div key={idx} className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <div className="relative flex-1 min-w-[110px]">
                       <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                       <input 
                         type="time" 
                         value={intervalo[0]} 
                         onChange={(e) => updateTime(dia.id, idx, 0, e.target.value)}
-                        className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/20 outline-none"
+                        className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand/20 outline-none bg-white shadow-sm"
                       />
                     </div>
-                    <span className="text-slate-300">às</span>
-                    <div className="relative">
+                    <span className="text-slate-300 font-medium text-xs">às</span>
+                    <div className="relative flex-1 min-w-[110px]">
                       <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                       <input 
                         type="time" 
                         value={intervalo[1]} 
                         onChange={(e) => updateTime(dia.id, idx, 1, e.target.value)}
-                        className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand/20 outline-none"
+                        className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand/20 outline-none bg-white shadow-sm"
                       />
                     </div>
                     <button 
                       onClick={() => removeInterval(dia.id, idx)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 ))}
                 
-                <button 
-                  onClick={() => addInterval(dia.id)}
-                  className="flex items-center gap-1.5 text-[10px] font-bold text-brand hover:underline mt-1 w-fit"
-                >
-                  <Plus className="h-3 w-3" />
-                  {intervalos.length === 0 ? "Ativar dia" : "Adicionar período"}
-                </button>
+                <div className="flex justify-start">
+                  <button 
+                    onClick={() => addInterval(dia.id)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-brand/20 text-[10px] font-bold text-brand hover:bg-brand/5 transition-all mt-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {intervalos.length === 0 ? "ATIVAR DIA" : "ADICIONAR PERÍODO"}
+                  </button>
+                </div>
               </div>
             </div>
           );

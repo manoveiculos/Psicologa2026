@@ -62,15 +62,15 @@ export default async function ConfiguracoesPage() {
   const { data: s } = await sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle();
 
   return (
-    <div className="max-w-4xl pb-20 space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold text-slate-800">Configurações</h2>
-        <p className="text-sm text-slate-500 mt-1">Gerencie seu perfil profissional, integrações e preferências do sistema.</p>
+    <div className="max-w-5xl mx-auto pb-32 space-y-6 md:space-y-10">
+      <div className="px-1">
+        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Configurações</h2>
+        <p className="text-sm text-slate-500 mt-1">Gerencie seu perfil profissional, integrações e preferências.</p>
       </div>
 
       {/* Seção 1: Dados da Clínica / Profissional */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 md:p-10 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
           <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
             <Settings className="h-5 w-5" />
           </div>
@@ -84,7 +84,7 @@ export default async function ConfiguracoesPage() {
 
       {/* Seção 2: Integrações e Preferências */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm h-full">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 md:p-10 shadow-sm h-full overflow-hidden">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Globe className="h-5 w-5" />
@@ -110,7 +110,7 @@ export default async function ConfiguracoesPage() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm h-full">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 md:p-10 shadow-sm h-full overflow-hidden">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
               <Bell className="h-5 w-5" />
@@ -132,7 +132,7 @@ export default async function ConfiguracoesPage() {
       </div>
 
       {/* Seção 3: Gestão de Horários */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 md:p-10 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
             <Clock className="h-5 w-5" />
@@ -156,7 +156,7 @@ export default async function ConfiguracoesPage() {
       </section>
 
       {/* Seção 4: Automação de Lembretes */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 md:p-10 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
           <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
             <Zap className="h-5 w-5" />
@@ -170,7 +170,7 @@ export default async function ConfiguracoesPage() {
       </section>
 
       {/* Seção 4: WhatsApp Evolution API */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 md:p-10 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <Shield className="h-5 w-5" />

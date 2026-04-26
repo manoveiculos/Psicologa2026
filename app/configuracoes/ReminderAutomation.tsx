@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Bell, Save, Info, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { updateSettingsAction } from "./actions";
 
 interface ReminderAutomationProps {
   settings: {
@@ -27,17 +27,11 @@ export function ReminderAutomation({ settings: s, userId }: ReminderAutomationPr
   });
 
   async function handleSalvar() {
-    const sb = supabaseBrowser();
-
     startTransition(async () => {
       try {
-        const { error } = await sb.from("settings_psicologa").upsert({
-          user_id: userId,
+        await updateSettingsAction({
           ...formData,
-          updated_at: new Date().toISOString(),
         });
-
-        if (error) throw error;
         toast.success("Configurações de automação salvas!");
       } catch (error) {
         console.error(error);

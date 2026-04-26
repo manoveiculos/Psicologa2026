@@ -4,6 +4,7 @@ import { useState, useRef, useTransition } from "react";
 import { Upload, Trash2, Building, Fingerprint, MapPin, Hash, CreditCard, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { updateSettingsAction } from "./actions";
 
 interface ClinicSettingsProps {
   settings: {
@@ -63,18 +64,12 @@ export function ClinicSettings({ settings: s, userId }: ClinicSettingsProps) {
   }
 
   async function handleSalvar() {
-    const sb = supabaseBrowser();
-
     startTransition(async () => {
       try {
-        const { error } = await sb.from("settings_psicologa").upsert({
-          user_id: userId,
+        await updateSettingsAction({
           ...formData,
           logo_url: logoUrl,
-          updated_at: new Date().toISOString(),
         });
-
-        if (error) throw error;
         toast.success("Dados da clínica salvos com sucesso!");
       } catch (error) {
         console.error(error);
