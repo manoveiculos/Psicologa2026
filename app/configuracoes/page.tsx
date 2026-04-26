@@ -12,59 +12,7 @@ import { RealTimeSyncButton } from "./RealTimeSyncButton";
 
 export const dynamic = "force-dynamic";
 
-async function salvarSettings(formData: FormData) {
-  "use server";
-  const user = await getAuthenticatedUser();
-  if (!user) return;
-
-  const sb = await supabaseServer();
-
-  await sb.from("settings_psicologa").upsert({
-    user_id: user.id,
-
-    duracao_sessao_minutos: Number(formData.get("duracao") ?? 50),
-    aliquota_imposto: Number(formData.get("aliquota") ?? 0),
-    percentual_repasse_padrao: Number(formData.get("repasse_padrao") ?? 0),
-    evolution_url: String(formData.get("evo_url") ?? "") || null,
-    evolution_api_key: String(formData.get("evo_key") ?? "") || null,
-    evolution_instance: String(formData.get("evo_instance") ?? "") || null,
-    whatsapp_template: String(formData.get("template") ?? ""),
-    whatsapp_profissional: String(formData.get("wp_prof") ?? ""),
-    timezone: String(formData.get("tz") ?? "America/Sao_Paulo"),
-    updated_at: new Date().toISOString(),
-  });
-  revalidatePath("/configuracoes");
-}
-
-async function desconectarGoogle() {
-  "use server";
-  const user = await getAuthenticatedUser();
-  if (!user) return;
-
-  const sb = await supabaseServer();
-
-  const { data: s } = await sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle();
-
-  if (s?.google_refresh_token && s?.google_webhook_id && s?.google_resource_id) {
-    try {
-      const { stopWatch } = await import("@/lib/google");
-      await stopWatch(s.google_refresh_token, s.google_webhook_id, s.google_resource_id);
-    } catch (e) {
-      console.error("Erro ao parar webhook do Google:", e);
-    }
-  }
-
-  await sb.from("settings_psicologa").update({
-    google_refresh_token: null,
-    google_access_token: null,
-    google_webhook_id: null,
-    google_resource_id: null,
-    google_webhook_expiration: null,
-    updated_at: new Date().toISOString(),
-  }).eq("user_id", user.id);
-  
-  revalidatePath("/configuracoes");
-}
+import { desconectarGoogleAction, saveGeneralPreferencesAction, saveWhatsAppSettingsAction } from "./actions";
 
 export default async function ConfiguracoesPage() {
   const user = await getAuthenticatedUser();
@@ -117,7 +65,7 @@ export default async function ConfiguracoesPage() {
                 expiration={s?.google_webhook_expiration} 
               />
 
-              <form action={desconectarGoogle}>
+              <form action={desconectarGoogleAction}>
                 <button className="w-full text-xs font-bold text-red-500 hover:text-red-600 hover:underline transition-colors text-center">
                   Desconectar agenda atual
                 </button>
@@ -137,7 +85,7 @@ export default async function ConfiguracoesPage() {
             </div>
             <h3 className="font-bold text-slate-800">Preferências Gerais</h3>
           </div>
-          <form action={salvarSettings} className="space-y-4">
+          <form action={saveGeneralPreferencesAction} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Duração sessão (min)" name="duracao" type="number" defaultValue={s?.duracao_sessao_minutos ?? 50} />
               <Field label="Imposto (%)" name="aliquota" type="number" step="0.01" defaultValue={s?.aliquota_imposto ?? 0} />
@@ -212,7 +160,7 @@ export default async function ConfiguracoesPage() {
               userPhone={s?.whatsapp_profissional}
             />
           </div>
-          <form action={salvarSettings} className="space-y-6">
+          <form action={saveWhatsAppSettingsAction} className="space-y-6">
             <div className="grid grid-cols-1 gap-4">
               <Field label="URL da API" name="evo_url" defaultValue={s?.evolution_url ?? ""} placeholder="https://api..." />
               <div className="grid grid-cols-2 gap-4">

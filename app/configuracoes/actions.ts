@@ -67,3 +67,68 @@ export async function uploadLogoAction(formData: FormData) {
 
   return { publicUrl };
 }
+
+export async function desconectarGoogleAction() {
+  const user = await getAuthenticatedUser();
+  if (!user) return;
+
+  const sb = await supabaseServer();
+  const { data: s } = await sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle();
+
+  if (s?.google_refresh_token && s?.google_webhook_id && s?.google_resource_id) {
+    try {
+      const { stopWatch } = await import("@/lib/google");
+      await stopWatch(s.google_refresh_token, s.google_webhook_id, s.google_resource_id);
+    } catch (e) {
+      console.error("Erro ao parar webhook do Google:", e);
+    }
+  }
+
+  await sb.from("settings_psicologa").update({
+    google_refresh_token: null,
+    google_access_token: null,
+    google_webhook_id: null,
+    google_resource_id: null,
+    google_webhook_expiration: null,
+    updated_at: new Date().toISOString(),
+  }).eq("user_id", user.id);
+  
+  revalidatePath("/configuracoes");
+}
+
+export async function saveGeneralPreferencesAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+  if (!user) return;
+
+  const sb = await supabaseServer();
+
+  await sb.from("settings_psicologa").upsert({
+    user_id: user.id,
+    duracao_sessao_minutos: Number(formData.get("duracao") ?? 50),
+    aliquota_imposto: Number(formData.get("aliquota") ?? 0),
+    percentual_repasse_padrao: Number(formData.get("repasse_padrao") ?? 0),
+    timezone: String(formData.get("tz") ?? "America/Sao_Paulo"),
+    whatsapp_profissional: String(formData.get("wp_prof") ?? ""),
+    updated_at: new Date().toISOString(),
+  });
+  
+  revalidatePath("/configuracoes");
+}
+
+export async function saveWhatsAppSettingsAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+  if (!user) return;
+
+  const sb = await supabaseServer();
+
+  await sb.from("settings_psicologa").upsert({
+    user_id: user.id,
+    evolution_url: String(formData.get("evo_url") ?? "") || null,
+    evolution_api_key: String(formData.get("evo_key") ?? "") || null,
+    evolution_instance: String(formData.get("evo_instance") ?? "") || null,
+    whatsapp_template: String(formData.get("template") ?? ""),
+    updated_at: new Date().toISOString(),
+  });
+  
+  revalidatePath("/configuracoes");
+}
