@@ -8,6 +8,7 @@ import { ReminderAutomation } from "./ReminderAutomation";
 import { Settings, Shield, Globe, Bell, Zap, Clock } from "lucide-react";
 import { WorkingHoursManager } from "./WorkingHoursManager";
 import { HorarioTrabalho } from "@/lib/slots";
+import { RealTimeSyncButton } from "./RealTimeSyncButton";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,12 @@ export default async function ConfiguracoesPage() {
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 Google Calendar Conectado
               </div>
+              
+              <RealTimeSyncButton 
+                isActivated={!!s?.google_webhook_id} 
+                expiration={s?.google_webhook_expiration} 
+              />
+
               <form action={desconectarGoogle}>
                 <button className="w-full text-xs font-bold text-red-500 hover:text-red-600 hover:underline transition-colors text-center">
                   Desconectar agenda atual

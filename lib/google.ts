@@ -18,3 +18,29 @@ export function calendarClient(refreshToken: string) {
   auth.setCredentials({ refresh_token: refreshToken });
   return google.calendar({ version: "v3", auth });
 }
+
+export async function watchCalendar(refreshToken: string, calendarId: string, address: string, userId: string) {
+  const cal = calendarClient(refreshToken);
+  const id = crypto.randomUUID();
+  
+  return cal.events.watch({
+    calendarId: calendarId || "primary",
+    requestBody: {
+      id: id,
+      type: "web_hook",
+      address: address,
+      token: userId, // Usamos o token para passar o userId de volta no webhook
+      expiration: String(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias
+    },
+  });
+}
+
+export async function stopWatch(refreshToken: string, id: string, resourceId: string) {
+  const cal = calendarClient(refreshToken);
+  return cal.channels.stop({
+    requestBody: {
+      id,
+      resourceId,
+    },
+  });
+}

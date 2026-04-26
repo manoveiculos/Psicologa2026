@@ -2,7 +2,7 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 
-import { calendarClient } from "@/lib/google";
+import { calendarClient, watchCalendar } from "@/lib/google";
 import { encryptText } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 
@@ -226,4 +226,34 @@ export async function updateAppointmentDetails(rawInput: z.infer<typeof updateSc
   revalidatePath("/agenda");
   revalidatePath("/");
   revalidatePath("/financeiro");
+}
+
+export async function setupGoogleWebhook() {
+  const { sb, user, settings } = await getUserAndCalendar();
+  if (!settings?.google_refresh_token) throw new Error("Google não conectado");
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://psicologa.app";
+  const webhookUrl = `${appUrl}/api/webhooks/google-calendar`;
+
+  try {
+    const { data } = await watchCalendar(
+      settings.google_refresh_token,
+      settings.google_calendar_id ?? "primary",
+      webhookUrl,
+      user.id
+    );
+
+    // Salvar metadados do canal para renovação/cancelamento posterior
+    await sb.from("settings_psicologa").update({
+      google_webhook_id: data.id,
+      google_resource_id: data.resourceId,
+      google_webhook_expiration: data.expiration,
+      updated_at: new Date().toISOString(),
+    }).eq("user_id", user.id);
+
+    return { ok: true, expiration: data.expiration };
+  } catch (err: any) {
+    console.error("Erro ao configurar Webhook:", err.message);
+    throw new Error(`Falha ao ativar sincronização em tempo real: ${err.message}`);
+  }
 }
