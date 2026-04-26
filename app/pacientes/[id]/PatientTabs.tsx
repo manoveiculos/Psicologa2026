@@ -289,7 +289,7 @@ function AgendaTab({ appointments }: { appointments: any[] }) {
       try {
         await updateAppointmentDetails({
           id: editingAppt.id,
-          status: formData.get("status") as string,
+          status: formData.get("status") as "agendado" | "realizado" | "faltou" | "cancelado",
           tipo: editingAppt.tipo,
           valor_bruto: Number(formData.get("valor")),
           prontuario_status: editingAppt.prontuario_status || "pendente"

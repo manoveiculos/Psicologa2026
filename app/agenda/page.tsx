@@ -1,9 +1,8 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 
-import dynamic from "next/dynamic";
-const CalendarView = dynamic(() => import("@/components/CalendarView"), { 
-  ssr: false,
+import NextDynamic from "next/dynamic";
+const CalendarView = NextDynamic(() => import("@/components/CalendarView"), { 
   loading: () => <div className="h-[600px] w-full animate-pulse bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">Carregando calendário...</div>
 });
 import { Suspense } from "react";

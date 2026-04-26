@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useTransition, useEffect } from "react";
+import { useRef, useState, useTransition, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -247,7 +247,7 @@ export default function CalendarView({
                 inicio: newRange.start,
                 fim: newRange.end,
                 ...data,
-              }).then(() => setNewRange(null)),
+              } as any).then(() => setNewRange(null)),
             )
           }
         />
@@ -504,7 +504,7 @@ function EditDrawer({
                 prontuario_status: form.prontuario_status,
                 prontuario_texto: form.prontuario_texto,
                 titulo: form.titulo,
-              })
+              } as any)
             }
             className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
@@ -754,7 +754,7 @@ function QuickAddModal({
                 ...form,
                 fim: end.toISOString(),
                 inicio: start.toISOString(),
-                tipo: patients.find(p => p.id === form.patient_id)?.tipo_default ?? "particular",
+                tipo: (patients.find(p => p.id === form.patient_id)?.tipo_default ?? "particular") as any,
                 percentual_clinica: 0,
               });
             }}
