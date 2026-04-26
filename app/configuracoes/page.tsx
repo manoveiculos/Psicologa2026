@@ -12,7 +12,8 @@ import { RealTimeSyncButton } from "./RealTimeSyncButton";
 
 export const dynamic = "force-dynamic";
 
-import { desconectarGoogleAction, saveGeneralPreferencesAction, saveWhatsAppSettingsAction } from "./actions";
+import { DisconnectGoogleButton } from "./DisconnectGoogleButton";
+import { saveGeneralPreferencesAction, saveWhatsAppSettingsAction } from "./actions";
 
 export default async function ConfiguracoesPage() {
   const user = await getAuthenticatedUser();
@@ -65,11 +66,7 @@ export default async function ConfiguracoesPage() {
                 expiration={s?.google_webhook_expiration} 
               />
 
-              <form action={desconectarGoogleAction}>
-                <button className="w-full text-xs font-bold text-red-500 hover:text-red-600 hover:underline transition-colors text-center">
-                  Desconectar agenda atual
-                </button>
-              </form>
+              <DisconnectGoogleButton />
             </div>
           ) : (
             <a href="/api/auth/google/start" className="flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3 text-sm font-bold text-white transition-all hover:bg-brand/90 hover:shadow-md">

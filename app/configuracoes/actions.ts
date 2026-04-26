@@ -72,7 +72,7 @@ export async function desconectarGoogleAction() {
   const user = await getAuthenticatedUser();
   if (!user) return;
 
-  const sb = await supabaseServer();
+  const sb = supabaseAdmin();
   const { data: s } = await sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle();
 
   if (s?.google_refresh_token && s?.google_webhook_id && s?.google_resource_id) {
@@ -84,7 +84,7 @@ export async function desconectarGoogleAction() {
     }
   }
 
-  await sb.from("settings_psicologa").update({
+  const { error } = await sb.from("settings_psicologa").update({
     google_refresh_token: null,
     google_access_token: null,
     google_webhook_id: null,
@@ -92,6 +92,11 @@ export async function desconectarGoogleAction() {
     google_webhook_expiration: null,
     updated_at: new Date().toISOString(),
   }).eq("user_id", user.id);
+
+  if (error) {
+    console.error("Erro ao desconectar Google:", error.message);
+    throw new Error("Erro ao desconectar do banco de dados");
+  }
   
   revalidatePath("/configuracoes");
 }
