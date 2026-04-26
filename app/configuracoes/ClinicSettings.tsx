@@ -14,9 +14,10 @@ interface ClinicSettingsProps {
     logo_url?: string | null;
     chave_pix?: string | null;
   };
+  userId: string;
 }
 
-export function ClinicSettings({ settings: s }: ClinicSettingsProps) {
+export function ClinicSettings({ settings: s, userId }: ClinicSettingsProps) {
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoUrl, setLogoUrl] = useState(s?.logo_url);
@@ -34,13 +35,11 @@ export function ClinicSettings({ settings: s }: ClinicSettingsProps) {
     if (!file) return;
 
     const sb = supabaseBrowser();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
 
     startTransition(async () => {
       try {
         const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/logo_${Date.now()}.${fileExt}`;
+        const filePath = `${userId}/logo_${Date.now()}.${fileExt}`;
 
         // Upload
         const { error: uploadError } = await sb.storage
@@ -65,13 +64,11 @@ export function ClinicSettings({ settings: s }: ClinicSettingsProps) {
 
   async function handleSalvar() {
     const sb = supabaseBrowser();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
 
     startTransition(async () => {
       try {
         const { error } = await sb.from("settings_psicologa").upsert({
-          user_id: user.id,
+          user_id: userId,
           ...formData,
           logo_url: logoUrl,
           updated_at: new Date().toISOString(),

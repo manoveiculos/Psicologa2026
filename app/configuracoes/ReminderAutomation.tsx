@@ -12,9 +12,10 @@ interface ReminderAutomationProps {
     welcome_msg_enabled?: boolean;
     reminder_template?: string | null;
   };
+  userId: string;
 }
 
-export function ReminderAutomation({ settings: s }: ReminderAutomationProps) {
+export function ReminderAutomation({ settings: s, userId }: ReminderAutomationProps) {
   const [isPending, startTransition] = useTransition();
   const [isSyncing, setIsSyncing] = useState(false);
   
@@ -27,13 +28,11 @@ export function ReminderAutomation({ settings: s }: ReminderAutomationProps) {
 
   async function handleSalvar() {
     const sb = supabaseBrowser();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
 
     startTransition(async () => {
       try {
         const { error } = await sb.from("settings_psicologa").upsert({
-          user_id: user.id,
+          user_id: userId,
           ...formData,
           updated_at: new Date().toISOString(),
         });

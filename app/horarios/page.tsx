@@ -4,6 +4,8 @@ import { slotsLivresSemana, type HorarioTrabalho, type Slot } from "@/lib/slots"
 import { startOfWeek, endOfWeek, addDays } from "date-fns";
 import { format, toZonedTime } from "date-fns-tz";
 
+import { getAuthenticatedUser } from "@/lib/auth-server";
+
 export const dynamic = "force-dynamic";
 
 const DIAS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -13,9 +15,10 @@ export default async function HorariosPage({
 }: {
   searchParams: Promise<{ semana?: string }>;
 }) {
+  const user = await getAuthenticatedUser();
+  if (!user) return <p className="p-8 text-center text-slate-500">Faça login para ver seus horários.</p>;
+
   const sb = await supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return <p>Faça login.</p>;
 
   const params = await searchParams;
   const offset = Number(params.semana ?? 0);

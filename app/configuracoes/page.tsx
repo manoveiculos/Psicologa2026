@@ -79,7 +79,7 @@ export default async function ConfiguracoesPage() {
             <p className="text-xs text-slate-400">Estas informações aparecerão em seus recibos e documentos.</p>
           </div>
         </div>
-        <ClinicSettings settings={s || {}} />
+        <ClinicSettings settings={s || {}} userId={user.id} />
       </section>
 
       {/* Seção 2: Integrações e Preferências */}
@@ -152,7 +152,7 @@ export default async function ConfiguracoesPage() {
             </a>
           </div>
         </div>
-        <WorkingHoursManager initialHorario={s?.horario_trabalho as HorarioTrabalho} />
+        <WorkingHoursManager initialHorario={s?.horario_trabalho as HorarioTrabalho} userId={user.id} />
       </section>
 
       {/* Seção 4: Automação de Lembretes */}
@@ -166,7 +166,7 @@ export default async function ConfiguracoesPage() {
             <p className="text-xs text-slate-400">Configure o envio automático de mensagens e sincronização.</p>
           </div>
         </div>
-        <ReminderAutomation settings={s || {}} />
+        <ReminderAutomation settings={s || {}} userId={user.id} />
       </section>
 
       {/* Seção 4: WhatsApp Evolution API */}

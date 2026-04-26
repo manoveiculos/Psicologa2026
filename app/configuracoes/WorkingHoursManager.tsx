@@ -18,9 +18,10 @@ const DIAS_SEMANA = [
 
 interface WorkingHoursManagerProps {
   initialHorario?: HorarioTrabalho | null;
+  userId: string;
 }
 
-export function WorkingHoursManager({ initialHorario }: WorkingHoursManagerProps) {
+export function WorkingHoursManager({ initialHorario, userId }: WorkingHoursManagerProps) {
   const [isPending, startTransition] = useTransition();
   const [horario, setHorario] = useState<HorarioTrabalho>(initialHorario || {
     "1": [["09:00", "18:00"]],
@@ -56,13 +57,11 @@ export function WorkingHoursManager({ initialHorario }: WorkingHoursManagerProps
 
   async function handleSalvar() {
     const sb = supabaseBrowser();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
-
+    
     startTransition(async () => {
       try {
         const { error } = await sb.from("settings_psicologa").upsert({
-          user_id: user.id,
+          user_id: userId,
           horario_trabalho: horario,
           updated_at: new Date().toISOString(),
         });
