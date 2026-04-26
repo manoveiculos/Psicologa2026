@@ -70,6 +70,8 @@ export async function getAuthenticatedUser(): Promise<AuthUser | null> {
       supabaseUser = newUser as any;
     }
 
+    if (!supabaseUser) return null;
+
     return {
       id: supabaseUser.id,
       email: supabaseUser.email!,
