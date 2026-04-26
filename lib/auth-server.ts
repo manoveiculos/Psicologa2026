@@ -42,14 +42,10 @@ export async function getAuthenticatedUser(): Promise<AuthUser | null> {
     if (!email) return null;
 
     // Busca o usuário no Supabase Auth usando o Admin SDK (service_role)
-    // Aumentamos o limite para garantir que o usuário seja encontrado em bases maiores
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000
-    });
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
     
     if (error) {
-      console.error("Erro crítico: falha ao listar usuários no Supabase (verifique a SERVICE_ROLE_KEY):", error);
+      console.error("Erro Supabase Auth Admin:", error);
       return null;
     }
 

@@ -23,9 +23,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   if (pathname?.startsWith("/login")) return <>{children}</>;
 
   async function logout() {
-    await auth.signOut();
-    await fetch("/api/auth/session", { method: "DELETE" });
-    location.href = "/login";
+    try {
+      await auth.signOut();
+      await fetch("/api/auth/session", { method: "DELETE" });
+      localStorage.clear();
+      sessionStorage.clear();
+      location.href = "/login";
+    } catch (e) {
+      console.error("Erro ao deslogar:", e);
+      location.href = "/login";
+    }
   }
 
   const NavLink = ({ href, label, icon: Icon, onClick }: any) => {
