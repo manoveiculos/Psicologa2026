@@ -42,18 +42,32 @@ export async function getAuthenticatedUser(): Promise<AuthUser | null> {
     if (!email) return null;
 
     // Busca o usuário no Supabase Auth usando o Admin SDK (service_role)
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
+      perPage: 1000
+    });
     
     if (error) {
       console.error("Erro Supabase Auth Admin:", error);
       return null;
     }
 
-    const supabaseUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    let supabaseUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
+    // Auto-provisioning: Se o usuário existe no Firebase mas não no Supabase, cria no Supabase
     if (!supabaseUser) {
-      console.warn(`Atenção: E-mail do Firebase (${email}) não tem um usuário correspondente no Supabase Auth.`);
-      return null;
+      console.log(`Auto-provisioning: Criando usuário ${email} no Supabase...`);
+      const { data: { user: newUser }, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: email,
+        email_confirm: true,
+        user_metadata: { firebase_uid: firebaseUid }
+      });
+      
+      if (createError) {
+        console.error("Erro ao auto-provisionar usuário no Supabase:", createError);
+        return null;
+      }
+      
+      supabaseUser = newUser as any;
     }
 
     return {
