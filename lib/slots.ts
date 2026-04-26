@@ -32,15 +32,30 @@ export function slotsLivresSemana(args: {
       let cursor = parseHM(dia, start, tz);
       const fimTrabalho = parseHM(dia, end, tz);
 
+      // Geramos os slots potenciais (slots_padrao)
+      const slotsNoPeriodo: Slot[] = [];
       while (isBefore(addMinutes(cursor, duracaoMin), fimTrabalho) ||
              +addMinutes(cursor, duracaoMin) === +fimTrabalho) {
         const fimSlot = addMinutes(cursor, duracaoMin);
-        const conflita = ocupados.some(
-          (b) => isBefore(b.inicio, fimSlot) && isBefore(cursor, b.fim),
-        );
-        if (!conflita) livres.push({ inicio: new Date(cursor), fim: fimSlot });
+        slotsNoPeriodo.push({ inicio: new Date(cursor), fim: fimSlot });
         cursor = fimSlot;
       }
+
+      // Aplicamos o filtro de conflito (Overlap Logic)
+      // Slot_Inicio < Agendamento_Fim E Slot_Fim > Agendamento_Inicio
+      const slotsFiltrados = slotsNoPeriodo.filter((slot) => {
+        const temConflito = ocupados.some((agendamento) => {
+          const s_ini = slot.inicio.getTime();
+          const s_fim = slot.fim.getTime();
+          const a_ini = agendamento.inicio.getTime();
+          const a_fim = agendamento.fim.getTime();
+
+          return s_ini < a_fim && s_fim > a_ini;
+        });
+        return !temConflito;
+      });
+
+      livres.push(...slotsFiltrados);
     }
   }
   return livres;

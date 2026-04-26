@@ -4,6 +4,7 @@ import { slotsLivresSemana, type HorarioTrabalho, type Slot } from "@/lib/slots"
 import { startOfWeek, endOfWeek, addDays, isSameDay } from "date-fns";
 import { format, toZonedTime } from "date-fns-tz";
 import { Calendar, Clock, ChevronLeft, ChevronRight, User } from "lucide-react";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -105,18 +106,18 @@ export default async function HorariosPublicosPage({
             </div>
             
             <div className="flex items-center gap-2">
-              <a 
+              <Link 
                 href={`/horarios-livres?semana=${offset - 1}${params.id ? `&id=${params.id}` : ""}`}
                 className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <ChevronLeft className="h-5 w-5" />
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href={`/horarios-livres?semana=${offset + 1}${params.id ? `&id=${params.id}` : ""}`}
                 className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <ChevronRight className="h-5 w-5" />
-              </a>
+              </Link>
             </div>
           </div>
 

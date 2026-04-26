@@ -5,6 +5,7 @@ import { startOfWeek, endOfWeek, addDays } from "date-fns";
 import { format, toZonedTime } from "date-fns-tz";
 
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -60,11 +61,11 @@ export default async function HorariosPage({
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Horários livres</h2>
         <div className="flex items-center gap-2 text-sm">
-          <a href={`/horarios?semana=${offset - 1}`} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">◀ anterior</a>
+          <Link href={`/horarios?semana=${offset - 1}`} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">◀ anterior</Link>
           <span className="text-slate-600">
             {format(weekStart, "dd/MM", { timeZone: tz })} – {format(weekEnd, "dd/MM", { timeZone: tz })}
           </span>
-          <a href={`/horarios?semana=${offset + 1}`} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">próxima ▶</a>
+          <Link href={`/horarios?semana=${offset + 1}`} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">próxima ▶</Link>
         </div>
       </div>
 
