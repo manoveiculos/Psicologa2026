@@ -3,6 +3,7 @@
 import { supabaseServer, supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 const settingsSchema = z.object({
@@ -86,11 +87,10 @@ export async function desconectarGoogleAction() {
 
     if (error) throw error;
     
-    revalidatePath("/configuracoes");
     return { success: true };
   } catch (err: any) {
     console.error("Erro crítico ao desconectar Google:", err.message);
-    throw new Error(err.message);
+    throw err;
   }
 }
 

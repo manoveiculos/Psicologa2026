@@ -16,7 +16,10 @@ export function DisconnectGoogleButton() {
     startTransition(async () => {
       try {
         await desconectarGoogleAction();
-        toast.success("Agenda desconectada com sucesso!");
+        toast.success("Agenda desconectada! Recarregando...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } catch (err: any) {
         toast.error("Erro ao desconectar: " + err.message);
       }
