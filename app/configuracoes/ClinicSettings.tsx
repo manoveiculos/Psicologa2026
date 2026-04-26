@@ -3,8 +3,7 @@
 import { useState, useRef, useTransition } from "react";
 import { Upload, Trash2, Building, Fingerprint, MapPin, Hash, CreditCard, Save } from "lucide-react";
 import { toast } from "sonner";
-import { supabaseBrowser } from "@/lib/supabase/client";
-import { updateSettingsAction } from "./actions";
+import { updateSettingsAction, uploadLogoAction } from "./actions";
 
 interface ClinicSettingsProps {
   settings: {
@@ -35,24 +34,12 @@ export function ClinicSettings({ settings: s, userId }: ClinicSettingsProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const sb = supabaseBrowser();
-
     startTransition(async () => {
       try {
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${userId}/logo_${Date.now()}.${fileExt}`;
-
-        // Upload
-        const { error: uploadError } = await sb.storage
-          .from('clinic-assets-psicologa')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        // Get URL
-        const { data: { publicUrl } } = sb.storage
-          .from('clinic-assets-psicologa')
-          .getPublicUrl(filePath);
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const { publicUrl } = await uploadLogoAction(formData);
 
         setLogoUrl(publicUrl);
         toast.success("Logo enviada! Lembre-se de salvar as configurações.");

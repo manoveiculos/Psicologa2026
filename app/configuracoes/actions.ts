@@ -1,6 +1,6 @@
 "use server";
 
-import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseServer, supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -39,4 +39,31 @@ export async function updateSettingsAction(data: z.infer<typeof settingsSchema>)
 
   revalidatePath("/configuracoes");
   return { success: true };
+}
+
+export async function uploadLogoAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error("não autenticado");
+
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("Arquivo não encontrado");
+
+  const sb = supabaseAdmin();
+  const fileExt = file.name.split('.').pop();
+  const filePath = `${user.id}/logo_${Date.now()}.${fileExt}`;
+
+  const { error: uploadError } = await sb.storage
+    .from('clinic-assets-psicologa')
+    .upload(filePath, file, {
+      contentType: file.type,
+      upsert: true
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data: { publicUrl } } = sb.storage
+    .from('clinic-assets-psicologa')
+    .getPublicUrl(filePath);
+
+  return { publicUrl };
 }
