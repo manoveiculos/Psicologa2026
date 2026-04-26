@@ -69,36 +69,29 @@ export async function uploadLogoAction(formData: FormData) {
 }
 
 export async function desconectarGoogleAction() {
-  const user = await getAuthenticatedUser();
-  if (!user) return;
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Usuário não autenticado");
 
-  const sb = supabaseAdmin();
-  const { data: s } = await sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle();
+    const sb = supabaseAdmin();
+    
+    const { error } = await sb.from("settings_psicologa").update({
+      google_refresh_token: null,
+      google_access_token: null,
+      google_webhook_id: null,
+      google_resource_id: null,
+      google_webhook_expiration: null,
+      updated_at: new Date().toISOString(),
+    }).eq("user_id", user.id);
 
-  if (s?.google_refresh_token && s?.google_webhook_id && s?.google_resource_id) {
-    try {
-      const { stopWatch } = await import("@/lib/google");
-      await stopWatch(s.google_refresh_token, s.google_webhook_id, s.google_resource_id);
-    } catch (e) {
-      console.error("Erro ao parar webhook do Google:", e);
-    }
+    if (error) throw error;
+    
+    revalidatePath("/configuracoes");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Erro crítico ao desconectar Google:", err.message);
+    throw new Error(err.message);
   }
-
-  const { error } = await sb.from("settings_psicologa").update({
-    google_refresh_token: null,
-    google_access_token: null,
-    google_webhook_id: null,
-    google_resource_id: null,
-    google_webhook_expiration: null,
-    updated_at: new Date().toISOString(),
-  }).eq("user_id", user.id);
-
-  if (error) {
-    console.error("Erro ao desconectar Google:", error.message);
-    throw new Error("Erro ao desconectar do banco de dados");
-  }
-  
-  revalidatePath("/configuracoes");
 }
 
 export async function saveGeneralPreferencesAction(formData: FormData) {
