@@ -43,10 +43,23 @@ async function desconectarGoogle() {
 
   const sb = await supabaseServer();
 
-  await sb.from("settings_psicologa").update({
+  const { data: s } = await sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle();
 
+  if (s?.google_refresh_token && s?.google_webhook_id && s?.google_resource_id) {
+    try {
+      const { stopWatch } = await import("@/lib/google");
+      await stopWatch(s.google_refresh_token, s.google_webhook_id, s.google_resource_id);
+    } catch (e) {
+      console.error("Erro ao parar webhook do Google:", e);
+    }
+  }
+
+  await sb.from("settings_psicologa").update({
     google_refresh_token: null,
     google_access_token: null,
+    google_webhook_id: null,
+    google_resource_id: null,
+    google_webhook_expiration: null,
     updated_at: new Date().toISOString(),
   }).eq("user_id", user.id);
   
