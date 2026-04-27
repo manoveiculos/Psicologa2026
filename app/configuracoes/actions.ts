@@ -100,7 +100,7 @@ export async function saveGeneralPreferencesAction(formData: FormData) {
 
   const sb = await supabaseServer();
 
-  await sb.from("settings_psicologa").upsert({
+  const { error } = await sb.from("settings_psicologa").upsert({
     user_id: user.id,
     duracao_sessao_minutos: Number(formData.get("duracao") ?? 50),
     aliquota_imposto: Number(formData.get("aliquota") ?? 0),
@@ -109,8 +109,14 @@ export async function saveGeneralPreferencesAction(formData: FormData) {
     whatsapp_profissional: String(formData.get("wp_prof") ?? ""),
     updated_at: new Date().toISOString(),
   });
+
+  if (error) {
+    console.error("Erro ao salvar preferências:", error);
+    return { error: "Erro ao salvar preferências." };
+  }
   
   revalidatePath("/configuracoes");
+  return { success: true };
 }
 
 export async function saveWhatsAppSettingsAction(formData: FormData) {
@@ -119,7 +125,7 @@ export async function saveWhatsAppSettingsAction(formData: FormData) {
 
   const sb = await supabaseServer();
 
-  await sb.from("settings_psicologa").upsert({
+  const { error } = await sb.from("settings_psicologa").upsert({
     user_id: user.id,
     evolution_url: String(formData.get("evo_url") ?? "") || null,
     evolution_api_key: String(formData.get("evo_key") ?? "") || null,
@@ -127,6 +133,12 @@ export async function saveWhatsAppSettingsAction(formData: FormData) {
     whatsapp_template: String(formData.get("template") ?? ""),
     updated_at: new Date().toISOString(),
   });
+
+  if (error) {
+    console.error("Erro ao salvar WhatsApp:", error);
+    return { error: "Erro ao salvar credenciais do WhatsApp." };
+  }
   
   revalidatePath("/configuracoes");
+  return { success: true };
 }
