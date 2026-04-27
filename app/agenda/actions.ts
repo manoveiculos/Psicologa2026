@@ -338,6 +338,87 @@ export async function updateAppointmentDetails(rawInput: z.infer<typeof updateSc
   revalidatePath("/financeiro");
 }
 
+/**
+ * Força um full-sync do Google Calendar para o usuário atual:
+ * limpa o syncToken e baixa eventos de 7 dias atrás até 60 dias à frente,
+ * fazendo upsert local. Útil ao conectar pela primeira vez.
+ */
+export async function forceFullSync() {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error("não autenticado");
+
+  const sb = await supabaseServer();
+  const { data: settings } = await sb
+    .from("settings_psicologa")
+    .select("google_refresh_token, google_calendar_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!settings?.google_refresh_token) throw new Error("Google Calendar não conectado");
+
+  const cal = calendarClient(settings.google_refresh_token);
+  const calendarId = settings.google_calendar_id ?? "primary";
+  const timeMin = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const timeMax = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+
+  const events: any[] = [];
+  let pageToken: string | undefined;
+  let nextSyncToken: string | undefined;
+  do {
+    const resp = await cal.events.list({
+      calendarId, timeMin, timeMax, singleEvents: true, showDeleted: true, pageToken,
+    });
+    events.push(...(resp.data.items ?? []));
+    pageToken = resp.data.nextPageToken ?? undefined;
+    if (resp.data.nextSyncToken) nextSyncToken = resp.data.nextSyncToken;
+  } while (pageToken);
+
+  let imported = 0;
+  for (const e of events) {
+    if (!e.id || !e.start?.dateTime || !e.end?.dateTime) continue;
+    if (e.status === "cancelled") {
+      await sb.from("appointments_psicologa")
+        .update({ status: "cancelado", updated_at: new Date().toISOString() })
+        .eq("google_event_id", e.id)
+        .eq("user_id", user.id);
+      continue;
+    }
+    const appId = e.extendedProperties?.private?.app_id;
+    const tipo = e.extendedProperties?.private?.tipo_atendimento;
+    const statusFin = e.extendedProperties?.private?.status_financeiro;
+    const row: any = {
+      user_id: user.id,
+      google_event_id: e.id,
+      inicio: e.start.dateTime,
+      fim: e.end.dateTime,
+      titulo_calendar: e.summary ?? "Sem título",
+      updated_at: new Date().toISOString(),
+    };
+    if (appId) row.id = appId;
+    if (tipo) {
+      row.tipo_atendimento = tipo;
+      row.tipo = tipo === "convenio" ? "plano" : tipo;
+    }
+    if (statusFin) row.status_financeiro = statusFin;
+
+    const { error } = await sb.from("appointments_psicologa").upsert(row, {
+      onConflict: "user_id,google_event_id",
+      ignoreDuplicates: false,
+    });
+    if (!error) imported++;
+  }
+
+  if (nextSyncToken) {
+    await sb.from("settings_psicologa")
+      .update({ google_sync_token: nextSyncToken, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+  }
+
+  revalidatePath("/agenda");
+  revalidatePath("/");
+  return { imported, total: events.length };
+}
+
 export async function setupGoogleWebhook() {
   const { sb, user, settings } = await getUserAndCalendar();
   if (!settings?.google_refresh_token) throw new Error("Google não conectado");

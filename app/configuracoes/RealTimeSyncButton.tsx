@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Zap, RefreshCw, CheckCircle2 } from "lucide-react";
-import { setupGoogleWebhook } from "@/app/agenda/actions";
+import { Zap, RefreshCw, CheckCircle2, Download } from "lucide-react";
+import { setupGoogleWebhook, forceFullSync } from "@/app/agenda/actions";
 import { toast } from "sonner";
 
 interface RealTimeSyncButtonProps {
@@ -26,6 +26,17 @@ export function RealTimeSyncButton({ isActivated: initialActivated, expiration }
     });
   }
 
+  async function handleImport() {
+    startTransition(async () => {
+      try {
+        const r = await forceFullSync();
+        toast.success(`${r.imported} eventos importados do Google.`);
+      } catch (err: any) {
+        toast.error(err.message);
+      }
+    });
+  }
+
   if (activated) {
     return (
       <div className="flex flex-col gap-2">
@@ -38,6 +49,15 @@ export function RealTimeSyncButton({ isActivated: initialActivated, expiration }
             Expira em: {new Date(Number(expiration)).toLocaleDateString()}
           </p>
         )}
+        <button
+          onClick={handleImport}
+          disabled={isPending}
+          className="mt-1 w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          title="Baixa do Google os eventos dos últimos 7 dias e próximos 60 dias e atualiza a agenda local."
+        >
+          {isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          {isPending ? "Importando..." : "Importar eventos do Google agora"}
+        </button>
       </div>
     );
   }
