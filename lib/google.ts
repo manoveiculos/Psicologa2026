@@ -44,3 +44,20 @@ export async function stopWatch(refreshToken: string, id: string, resourceId: st
     },
   });
 }
+
+/**
+ * extendedProperties.private espelha campos de negócio para identificar a origem
+ * da alteração e evitar loops Google → App → Google.
+ */
+export function buildExtendedProperties(args: {
+  appId: string;
+  tipo_atendimento?: string | null;
+  status_financeiro?: string | null;
+  duracao_sessao_min?: number | null;
+}) {
+  const priv: Record<string, string> = { app_id: args.appId };
+  if (args.tipo_atendimento) priv.tipo_atendimento = args.tipo_atendimento;
+  if (args.status_financeiro) priv.status_financeiro = args.status_financeiro;
+  if (args.duracao_sessao_min) priv.duracao_sessao_min = String(args.duracao_sessao_min);
+  return { private: priv };
+}

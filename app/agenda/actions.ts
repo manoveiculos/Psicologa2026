@@ -2,7 +2,7 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 
-import { calendarClient, watchCalendar } from "@/lib/google";
+import { calendarClient, watchCalendar, buildExtendedProperties } from "@/lib/google";
 import { encryptText } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 
@@ -132,7 +132,8 @@ export async function createAppointment(rawInput: z.infer<typeof appointmentSche
 
   const rows = await Promise.all(
     ocorrencias.map(async (o) => {
-      let googleEventId = `local_${crypto.randomUUID()}`;
+      const appId = crypto.randomUUID();
+      let googleEventId = `local_${appId}`;
       if (cal) {
         try {
           const resp = await cal.events.insert({
@@ -141,6 +142,12 @@ export async function createAppointment(rawInput: z.infer<typeof appointmentSche
               summary: input.titulo,
               start: { dateTime: o.inicio.toISOString(), timeZone: TZ },
               end: { dateTime: o.fim.toISOString(), timeZone: TZ },
+              extendedProperties: buildExtendedProperties({
+                appId,
+                tipo_atendimento,
+                status_financeiro,
+                duracao_sessao_min,
+              }),
             },
           });
           if (resp.data.id) googleEventId = resp.data.id;
@@ -149,6 +156,7 @@ export async function createAppointment(rawInput: z.infer<typeof appointmentSche
         }
       }
       return {
+        id: appId,
         user_id: user.id,
         google_event_id: googleEventId,
         inicio: o.inicio.toISOString(),
@@ -195,8 +203,9 @@ export async function moveAppointment(id: string, inicioRaw: string, fimRaw: str
         calendarId: settings.google_calendar_id ?? "primary",
         eventId: appt.google_event_id,
         requestBody: {
-          start: { dateTime: inicio },
-          end: { dateTime: fim },
+          start: { dateTime: inicio, timeZone: TZ },
+          end: { dateTime: fim, timeZone: TZ },
+          extendedProperties: { private: { app_id: id, app_updated_at: new Date().toISOString() } },
         },
       });
     } catch (e: any) {
@@ -297,20 +306,23 @@ export async function updateAppointmentDetails(rawInput: z.infer<typeof updateSc
     .maybeSingle();
 
   if (
-    input.titulo &&
     settings?.google_refresh_token &&
     current?.google_event_id &&
     !current.google_event_id.startsWith("local_")
   ) {
     try {
       const cal = calendarClient(settings.google_refresh_token);
+      const requestBody: any = {
+        extendedProperties: { private: { app_id: input.id, app_updated_at: new Date().toISOString() } },
+      };
+      if (input.titulo) requestBody.summary = input.titulo;
       await cal.events.patch({
         calendarId: settings.google_calendar_id ?? "primary",
         eventId: current.google_event_id,
-        requestBody: { summary: input.titulo },
+        requestBody,
       });
     } catch (e: any) {
-      console.error("Falha ao atualizar título no Google:", e.message);
+      console.error("Falha ao atualizar evento no Google:", e.message);
     }
   }
 
