@@ -23,7 +23,7 @@ export default async function AgendaPage() {
 
   const [{ data: appts }, { data: patients }, { data: settings }] = await Promise.all([
     sb.from("appointments_psicologa")
-      .select("id,inicio,fim,tipo,status,prontuario_status,valor_bruto,percentual_clinica,titulo_calendar,patient_id,patients_psicologa(nome),clinical_notes_psicologa(id,content)")
+      .select("id,inicio,fim,tipo,tipo_atendimento,duracao_sessao_min,qtd_sessoes,status,status_financeiro,status_sessao,alerta_clinico,prontuario_status,valor_bruto,percentual_clinica,titulo_calendar,patient_id,patients_psicologa(nome),clinical_notes_psicologa(id,content)")
       .eq("user_id", user.id)
       .gte("inicio", from.toISOString())
       .lte("inicio", to.toISOString())

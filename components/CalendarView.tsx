@@ -39,7 +39,13 @@ type Appt = {
   inicio: string;
   fim: string;
   tipo: string;
+  tipo_atendimento?: string | null;
+  duracao_sessao_min?: number | null;
+  qtd_sessoes?: number | null;
   status: string;
+  status_financeiro?: string | null;
+  status_sessao?: string | null;
+  alerta_clinico?: string | null;
   prontuario_status: string;
   valor_bruto: number | null;
   percentual_clinica: number | null;
@@ -47,6 +53,20 @@ type Appt = {
   patient_id: string | null;
   patients_psicologa: { nome: string } | null;
   clinical_notes_psicologa: { id: string; content: string }[] | null;
+};
+
+const STATUS_FIN_LABEL: Record<string, string> = {
+  pago: "Pago",
+  pendente: "Pendente",
+  aguardando_convenio: "Aguardando convênio",
+};
+const TIPO_LABEL: Record<string, string> = {
+  particular: "Particular",
+  convenio: "Convênio",
+  plano: "Convênio",
+  misto: "Misto",
+  bloqueio: "Bloqueio",
+  pessoal: "Pessoal",
 };
 
 const COLOR_BY_TIPO: Record<string, { bg: string; border: string }> = {
@@ -95,9 +115,16 @@ export default function CalendarView({
           : a.status === "realizado" && hasNote
             ? "🟢 "
             : "";
+    const tipoKey = a.tipo_atendimento ?? a.tipo;
+    const tipoLabel = TIPO_LABEL[tipoKey] ?? tipoKey;
+    const dur = a.duracao_sessao_min ??
+      Math.round((new Date(a.fim).getTime() - new Date(a.inicio).getTime()) / 60000);
+    const finLabel = a.status_financeiro ? STATUS_FIN_LABEL[a.status_financeiro] ?? a.status_financeiro : "";
+    const titleParts = [nome, tipoLabel, `${dur}min`];
+    if (finLabel) titleParts.push(finLabel);
     return {
       id: a.id,
-      title: `${marker}${nome}`,
+      title: `${marker}${titleParts.join(" | ")}`,
       start: a.inicio,
       end: a.fim,
       backgroundColor: color.bg,

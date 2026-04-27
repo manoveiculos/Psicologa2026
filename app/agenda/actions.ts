@@ -7,15 +7,40 @@ import { encryptText } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 
 import { z } from "zod";
+import { addWeeks } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 
+const TZ = "America/Sao_Paulo";
+
+/**
+ * Aceita tanto ISO com offset ("2026-04-27T13:00:00-03:00" / "...Z") quanto
+ * ISO local sem offset ("2026-04-27T13:00:00") — neste último caso interpreta
+ * como horário em America/Sao_Paulo. Retorna ISO UTC (com Z).
+ */
+function toUtcIso(input: string): string {
+  if (!input) throw new Error("data inválida");
+  const hasOffset = /Z$|[+-]\d{2}:?\d{2}$/.test(input);
+  const d = hasOffset ? new Date(input) : fromZonedTime(input, TZ);
+  if (isNaN(d.getTime())) throw new Error(`data inválida: ${input}`);
+  return d.toISOString();
+}
+
+// Compat com código antigo (UI ainda envia inicio/fim crus)
 const appointmentSchema = z.object({
-  inicio: z.string().datetime(),
-  fim: z.string().datetime(),
+  inicio: z.string(),
+  fim: z.string(),
   titulo: z.string().min(1, "Título é obrigatório"),
-  tipo: z.enum(["particular", "plano", "bloqueio", "pessoal"]),
+  // Aceita o legado e os novos
+  tipo: z.enum(["particular", "plano", "convenio", "misto", "bloqueio", "pessoal"]),
   patient_id: z.string().uuid().nullable().optional(),
   valor_bruto: z.number().nullable().optional(),
   percentual_clinica: z.number().nullable().optional(),
+  // Novos opcionais
+  tipo_atendimento: z.enum(["particular", "convenio", "misto", "bloqueio", "pessoal"]).optional(),
+  duracao_sessao_min: z.union([z.literal(30), z.literal(50), z.literal(60)]).optional(),
+  alerta_clinico: z.string().optional().nullable(),
+  recorrencia: z.enum(["nenhuma", "semanal", "quinzenal"]).optional().default("nenhuma"),
+  recorrencia_ate: z.string().optional(),
 });
 
 async function getUserAndCalendar() {
@@ -41,45 +66,119 @@ export async function createAppointment(rawInput: z.infer<typeof appointmentSche
     .eq("user_id", user.id)
     .maybeSingle();
 
-  let googleEventId: string | null = null;
-  if (settingsData?.google_refresh_token) {
-    try {
-      const cal = calendarClient(settingsData.google_refresh_token);
-      const resp = await cal.events.insert({
-        calendarId: settingsData.google_calendar_id ?? "primary",
-        requestBody: {
-          summary: input.titulo,
-          start: { dateTime: input.inicio },
-          end: { dateTime: input.fim },
-        },
-      });
-      googleEventId = resp.data.id ?? null;
-    } catch (e: any) {
-      console.error("Falha na sincronização com Google (API desativada ou erro de permissão):", e.message);
-      // Fallback para criação local apenas
-      googleEventId = `local_${crypto.randomUUID()}`;
-    }
+  // Normaliza tipo legado e deriva tipo_atendimento
+  const tipo_atendimento =
+    input.tipo_atendimento ??
+    (input.tipo === "plano" ? "convenio" : (input.tipo as any));
+
+  // Calcula duração em minutos a partir do intervalo se não vier explícita
+  const inicioUtcIso = toUtcIso(input.inicio);
+  const fimUtcIso = toUtcIso(input.fim);
+  const dInicio = new Date(inicioUtcIso);
+  const dFim = new Date(fimUtcIso);
+  const minutosIntervalo = Math.round((dFim.getTime() - dInicio.getTime()) / 60000);
+  const duracao_sessao_min =
+    input.duracao_sessao_min ??
+    (minutosIntervalo === 30 || minutosIntervalo === 50 || minutosIntervalo === 60
+      ? (minutosIntervalo as 30 | 50 | 60)
+      : tipo_atendimento === "particular"
+      ? 50
+      : 50);
+
+  // Validação condicional
+  if (tipo_atendimento === "convenio" && ![30, 60].includes(duracao_sessao_min)) {
+    throw new Error("Convênio: a duração deve ser 30 ou 60 min.");
+  }
+  if (tipo_atendimento === "particular" && duracao_sessao_min !== 50) {
+    throw new Error("Particular: a duração deve ser 50 min.");
   }
 
-  const { error } = await sb.from("appointments_psicologa").insert({
-    user_id: user.id,
-    google_event_id: googleEventId ?? `local_${crypto.randomUUID()}`,
-    inicio: input.inicio,
-    fim: input.fim,
-    titulo_calendar: input.titulo,
-    tipo: input.tipo,
-    patient_id: input.patient_id || null,
-    valor_bruto: input.valor_bruto ?? null,
-    porcentagem_repasse: Number(settingsData?.percentual_repasse_padrao ?? 0),
-    status_recebimento: "pendente",
-  });
+  // Multi-sessão: convênio 60min = 2 sessões
+  const qtd_sessoes =
+    tipo_atendimento === "convenio" && duracao_sessao_min === 60 ? 2 : 1;
+  // valor_bruto recebido é unitário; total = unitário × qtd
+  const valorUnitario = input.valor_bruto ?? null;
+  const valor_bruto_total = valorUnitario != null ? valorUnitario * qtd_sessoes : null;
+
+  // Status financeiro inicial
+  const status_financeiro =
+    tipo_atendimento === "convenio" || tipo_atendimento === "misto"
+      ? "aguardando_convenio"
+      : "pendente";
+
+  // Recorrência: gera lista de ocorrências em UTC
+  const stepWeeks =
+    input.recorrencia === "semanal" ? 1 : input.recorrencia === "quinzenal" ? 2 : 0;
+  const ate = input.recorrencia_ate
+    ? new Date(toUtcIso(input.recorrencia_ate.length <= 10 ? `${input.recorrencia_ate}T23:59:00` : input.recorrencia_ate))
+    : new Date(dInicio.getFullYear(), 11, 31, 23, 59);
+
+  const ocorrencias: { inicio: Date; fim: Date }[] = [];
+  let cursor = dInicio;
+  let cursorFim = dFim;
+  while (cursor <= ate) {
+    ocorrencias.push({ inicio: cursor, fim: cursorFim });
+    if (stepWeeks === 0) break;
+    cursor = addWeeks(cursor, stepWeeks);
+    cursorFim = addWeeks(cursorFim, stepWeeks);
+  }
+
+  const recorrencia_id = stepWeeks > 0 ? crypto.randomUUID() : null;
+
+  // Cria evento(s) no Google em paralelo
+  const cal = settingsData?.google_refresh_token
+    ? calendarClient(settingsData.google_refresh_token)
+    : null;
+
+  const rows = await Promise.all(
+    ocorrencias.map(async (o) => {
+      let googleEventId = `local_${crypto.randomUUID()}`;
+      if (cal) {
+        try {
+          const resp = await cal.events.insert({
+            calendarId: settingsData!.google_calendar_id ?? "primary",
+            requestBody: {
+              summary: input.titulo,
+              start: { dateTime: o.inicio.toISOString(), timeZone: TZ },
+              end: { dateTime: o.fim.toISOString(), timeZone: TZ },
+            },
+          });
+          if (resp.data.id) googleEventId = resp.data.id;
+        } catch (e: any) {
+          console.error("Falha sync Google:", e.message);
+        }
+      }
+      return {
+        user_id: user.id,
+        google_event_id: googleEventId,
+        inicio: o.inicio.toISOString(),
+        fim: o.fim.toISOString(),
+        titulo_calendar: input.titulo,
+        tipo: tipo_atendimento === "convenio" ? "plano" : tipo_atendimento, // legado
+        tipo_atendimento,
+        duracao_sessao_min,
+        qtd_sessoes,
+        patient_id: input.patient_id || null,
+        valor_bruto: valor_bruto_total,
+        porcentagem_repasse: Number(settingsData?.percentual_repasse_padrao ?? 0),
+        status_recebimento: "pendente",
+        status_financeiro,
+        alerta_clinico: input.alerta_clinico ?? null,
+        recorrencia_id,
+      };
+    }),
+  );
+
+  const { error } = await sb.from("appointments_psicologa").insert(rows);
   if (error) throw new Error(error.message);
 
   revalidatePath("/agenda");
   revalidatePath("/");
 }
 
-export async function moveAppointment(id: string, inicio: string, fim: string) {
+export async function moveAppointment(id: string, inicioRaw: string, fimRaw: string) {
+  const inicio = toUtcIso(inicioRaw);
+  const fim = toUtcIso(fimRaw);
   const { sb, user, settings } = await getUserAndCalendar();
 
   const { data: appt } = await sb
@@ -184,11 +283,10 @@ export async function updateAppointmentDetails(rawInput: z.infer<typeof updateSc
       updated_at: new Date().toISOString()
     }, { onConflict: "appointment_id" });
 
-    if (noteError) console.error("Erro ao salvar prontuário:", noteError.message);
-
-    // Mantém compatibilidade legada se necessário
-    update.prontuario_cipher = encryptText(input.prontuario_texto);
-    update.prontuario_status = "feito";
+    if (noteError) {
+      console.error("Erro ao salvar prontuário:", noteError.message);
+      throw new Error("Não foi possível salvar a evolução clínica: " + noteError.message);
+    }
   }
 
   const { data: current } = await sb
