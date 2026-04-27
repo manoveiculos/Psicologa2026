@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from "@/lib/auth-server";
 
 import { BRL, APP_TZ } from "@/lib/utils";
 import { slotsLivresSemana, type HorarioTrabalho } from "@/lib/slots";
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, format } from "date-fns";
 import Link from "next/link";
 import ResumoOperacional from "@/app/components/ResumoOperacional";
 import { Calendar, Users, DollarSign, ClipboardList, Clock, ArrowRight, Plus } from "lucide-react";
@@ -23,8 +23,10 @@ async function loadData() {
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
   const last7Days = subDays(now, 7);
+  const dayStart = new Date(new Date(now).setHours(0,0,0,0));
+  const dayEnd = new Date(new Date(now).setHours(23,59,59,999));
 
-  const [settings, appts, financeiro, todasSessoesSemana] = await Promise.all([
+  const [settings, appts, financeiro, todasSessoesSemana, agendaHojeData] = await Promise.all([
     sb.from("settings_psicologa").select("*").eq("user_id", user.id).maybeSingle(),
     sb.from("appointments_psicologa")
       .select("id,inicio,fim,tipo,status")
@@ -37,19 +39,32 @@ async function loadData() {
       .gte("mes", monthStart.toISOString())
       .lte("mes", monthEnd.toISOString())
       .maybeSingle(),
-    // Busca todas as sessões realizadas nos últimos 7 dias para o Resumo Operacional
-    sb.from("appointments_psicologa")
-      .select(`
-        id,
-        inicio,
-        patient:patients_psicologa(id, nome),
-        note:clinical_notes_psicologa(id)
-      `)
-      .eq("user_id", user.id)
-      .eq("status", "realizado")
-      .gte("inicio", last7Days.toISOString())
-      .order("inicio", { ascending: false })
-  ]);
+      sb.from("appointments_psicologa")
+       .select(`
+         id,
+         inicio,
+         patient:patients_psicologa(id, nome),
+         note:clinical_notes_psicologa(id)
+       `)
+       .eq("user_id", user.id)
+       .eq("status", "realizado")
+       .gte("inicio", last7Days.toISOString())
+       .order("inicio", { ascending: false }),
+     // Busca agendamentos de hoje
+     sb.from("appointments_psicologa")
+       .select(`
+         id,
+         inicio,
+         fim,
+         status,
+         tipo,
+         patient:patients_psicologa(nome)
+       `)
+       .eq("user_id", user.id)
+       .gte("inicio", dayStart.toISOString())
+       .lte("inicio", dayEnd.toISOString())
+       .order("inicio", { ascending: true })
+   ]);
 
   const ocupados = (appts.data ?? []).map((a) => ({
     inicio: new Date(a.inicio),
@@ -89,6 +104,14 @@ async function loadData() {
     listaPendencias,
     receitaLiquida: Number(financeiro.data?.receita_liquida ?? 0),
     despesas: Number(financeiro.data?.despesas ?? 0),
+    agendaHoje: (agendaHojeData.data || []).map((a: any) => ({
+      id: a.id,
+      inicio: a.inicio,
+      fim: a.fim,
+      status: a.status,
+      tipo: a.tipo,
+      paciente: a.patient?.nome || "Sem nome"
+    })),
     hasUser: true,
   };
 }
@@ -169,7 +192,7 @@ export default async function Dashboard() {
           <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <Clock className="h-6 w-6" />
           </div>
-          <span className="text-sm font-bold text-slate-700">Consultar Vagos</span>
+          <span className="text-sm font-bold text-slate-700">Consultar Horários Livres</span>
         </Link>
       </div>
 
@@ -180,15 +203,43 @@ export default async function Dashboard() {
           listaPendencias={data.listaPendencias} 
         />
 
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-center items-center text-center">
-          <div className="w-16 h-16 rounded-full bg-brand-soft flex items-center justify-center mb-4">
-            <Calendar className="h-8 w-8 text-brand" />
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-brand-soft flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-brand" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-700">Agenda do Dia</h3>
+            </div>
+            <Link href="/agenda" className="text-xs font-bold text-brand hover:underline">Ver tudo</Link>
           </div>
-          <h3 className="text-lg font-semibold text-slate-700">Agenda do Dia</h3>
-          <p className="text-sm text-slate-400 mt-2">Acompanhe seus horários de hoje em tempo real.</p>
-          <Link href="/agenda" className="mt-4 flex items-center gap-1 text-sm font-bold text-brand hover:underline">
-            Ver agenda completa <ArrowRight className="h-4 w-4" />
-          </Link>
+
+          <div className="space-y-3">
+            {data.agendaHoje.length === 0 ? (
+              <div className="py-10 text-center">
+                <p className="text-sm text-slate-400 italic">Nenhum agendamento para hoje.</p>
+              </div>
+            ) : (
+              data.agendaHoje.map((a: any) => (
+                <div key={a.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-50 bg-slate-50/30 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="text-center min-w-[50px]">
+                      <p className="text-xs font-bold text-slate-800">{format(new Date(a.inicio), "HH:mm")}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">{format(new Date(a.fim), "HH:mm")}</p>
+                    </div>
+                    <div className="h-8 w-[2px] bg-slate-100 rounded-full" />
+                    <div>
+                      <p className="text-sm font-bold text-slate-700">{a.paciente}</p>
+                      <p className="text-[10px] text-slate-400 capitalize">{a.tipo} · {a.status}</p>
+                    </div>
+                  </div>
+                  <Link href={`/agenda?edit=${a.id}`} className="p-2 text-slate-400 hover:text-brand transition-colors">
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              ))
+            )}
+          </div>
         </section>
       </div>
     </div>

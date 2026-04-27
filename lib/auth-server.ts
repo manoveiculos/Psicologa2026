@@ -2,6 +2,7 @@
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "./supabase/admin";
 import jwt from "jsonwebtoken";
+import { getFirebaseAdmin } from "./firebase-admin";
 
 export interface AuthUser {
   id: string;
@@ -23,13 +24,19 @@ export async function getAuthenticatedUser(): Promise<AuthUser | null> {
     // Verificação real do token usando Firebase Admin
     let decoded: any;
     try {
-      const { auth: adminAuth } = require("./firebase-admin").getFirebaseAdmin();
+      const { auth: adminAuth } = getFirebaseAdmin();
       decoded = await adminAuth.verifyIdToken(token);
-    } catch (e) {
-      console.error("Falha na verificação do ID Token do Firebase:", e);
+    } catch (e: any) {
+      if (e.message !== "FIREBASE_CONFIG_MISSING") {
+        console.error("Falha na verificação do ID Token do Firebase:", e);
+      }
+      
       // Fallback para decode apenas se não houver variáveis de ambiente (DANGEROUS)
-      if (!process.env.FIREBASE_PRIVATE_KEY) {
-        console.warn("AVISO DE SEGURANÇA: Usando decodificação insegura pois as variáveis do Firebase Admin não estão configuradas.");
+      const hasAdminKey = process.env.FIREBASE_PRIVATE_KEY;
+      if (!hasAdminKey) {
+        if (e.message !== "FIREBASE_CONFIG_MISSING") {
+           console.warn("AVISO DE SEGURANÇA: Usando decodificação insegura pois as variáveis do Firebase Admin não estão configuradas.");
+        }
         decoded = jwt.decode(token);
       } else {
         return null;
