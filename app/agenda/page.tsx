@@ -6,7 +6,7 @@ const CalendarView = NextDynamic(() => import("@/components/CalendarView"), {
   loading: () => <div className="h-[600px] w-full animate-pulse bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">Carregando calendário...</div>
 });
 import { Suspense } from "react";
-import { startOfMonth, endOfMonth, subWeeks, addWeeks } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +18,8 @@ export default async function AgendaPage() {
 
 
   const now = new Date();
-  const from = subWeeks(startOfMonth(now), 2);
-  const to = addWeeks(endOfMonth(now), 2);
+  const from = subMonths(startOfMonth(now), 1);
+  const to = addMonths(endOfMonth(now), 3);
 
   const [{ data: appts }, { data: patients }, { data: settings }] = await Promise.all([
     sb.from("appointments_psicologa")
