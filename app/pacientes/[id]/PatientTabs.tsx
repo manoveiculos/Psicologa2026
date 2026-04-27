@@ -457,8 +457,14 @@ function DadosTab({ patient, documents }: { patient: any, documents: any[] }) {
     nome: patient.nome || "",
     telefone_e164: patient.telefone_e164 || "",
     tipo_default: patient.tipo_default || "particular",
+    tipo_atendimento: patient.tipo_atendimento || (patient.tipo_default === "plano" ? "convenio" : "particular"),
     convenio: patient.convenio || "",
+    convenio_nome: patient.convenio_nome || patient.convenio || "",
     valor_sessao_default: patient.valor_sessao_default || "",
+    valor_convenio: patient.valor_convenio ?? "",
+    duracao_convenio_min: patient.duracao_convenio_min ?? 30,
+    valor_particular: patient.valor_particular ?? "",
+    duracao_particular_min: patient.duracao_particular_min ?? 50,
     cpf: patient.cpf || "",
     data_nascimento: patient.data_nascimento || "",
     endereco: patient.endereco || "",
@@ -519,21 +525,58 @@ function DadosTab({ patient, documents }: { patient: any, documents: any[] }) {
               <InputGroup label="Nome" value={formData.nome} onChange={(v) => setFormData({...formData, nome: v})} />
               <InputGroup label="Telefone" value={formData.telefone_e164} onChange={(v) => setFormData({...formData, telefone_e164: v})} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Modalidade</label>
-                <select 
-                  value={formData.tipo_default}
-                  onChange={(e) => setFormData({...formData, tipo_default: e.target.value})}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:outline-none bg-white"
-                >
-                  <option value="particular">Particular</option>
-                  <option value="plano">Plano</option>
-                </select>
-              </div>
-              <InputGroup label="Valor Sessão" type="number" value={formData.valor_sessao_default.toString()} onChange={(v) => setFormData({...formData, valor_sessao_default: v})} />
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tipo de atendimento</label>
+              <select
+                value={formData.tipo_atendimento}
+                onChange={(e) => {
+                  const t = e.target.value;
+                  setFormData({
+                    ...formData,
+                    tipo_atendimento: t,
+                    tipo_default: t === "convenio" ? "plano" : t === "misto" ? "plano" : "particular",
+                  });
+                }}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:outline-none bg-white"
+              >
+                <option value="particular">Particular</option>
+                <option value="convenio">Convênio</option>
+                <option value="misto">Misto (Particular + Convênio)</option>
+              </select>
             </div>
-            <InputGroup label="Convênio" value={formData.convenio} onChange={(v) => setFormData({...formData, convenio: v})} />
+
+            {(formData.tipo_atendimento === "convenio" || formData.tipo_atendimento === "misto") && (
+              <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-4 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Convênio</p>
+                <InputGroup label="Nome do convênio (ex: Unimed)" value={formData.convenio_nome} onChange={(v) => setFormData({ ...formData, convenio_nome: v, convenio: v })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <InputGroup label="Valor por sessão (R$)" type="number" value={String(formData.valor_convenio)} onChange={(v) => setFormData({ ...formData, valor_convenio: v as any })} />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Duração (min)</label>
+                    <select
+                      value={formData.duracao_convenio_min}
+                      onChange={(e) => setFormData({ ...formData, duracao_convenio_min: Number(e.target.value) })}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+                    >
+                      <option value={30}>30</option>
+                      <option value={60}>60</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(formData.tipo_atendimento === "particular" || formData.tipo_atendimento === "misto") && (
+              <div className="rounded-lg bg-violet-50/50 border border-violet-100 p-4 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700">Particular</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <InputGroup label="Valor por sessão (R$)" type="number" value={String(formData.valor_particular)} onChange={(v) => setFormData({ ...formData, valor_particular: v as any })} />
+                  <InputGroup label="Duração (min)" type="number" value={String(formData.duracao_particular_min)} onChange={(v) => setFormData({ ...formData, duracao_particular_min: Number(v) || 50 })} />
+                </div>
+              </div>
+            )}
+
+            <InputGroup label="Valor padrão (legado)" type="number" value={formData.valor_sessao_default.toString()} onChange={(v) => setFormData({...formData, valor_sessao_default: v})} />
             <div className="grid grid-cols-2 gap-4">
               <InputGroup label="CPF" value={formData.cpf} onChange={(v) => setFormData({...formData, cpf: v})} />
               <InputGroup label="Nascimento" type="date" value={formData.data_nascimento} onChange={(v) => setFormData({...formData, data_nascimento: v})} />

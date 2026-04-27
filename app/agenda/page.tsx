@@ -29,7 +29,7 @@ export default async function AgendaPage() {
       .lte("inicio", to.toISOString())
       .order("inicio"),
     sb.from("patients_psicologa")
-      .select("id,nome,valor_sessao_default,tipo_default")
+      .select("id,nome,valor_sessao_default,tipo_default,tipo_atendimento,valor_convenio,duracao_convenio_min,valor_particular,duracao_particular_min")
       .eq("user_id", user.id)
       .eq("ativo", true)
       .order("nome"),

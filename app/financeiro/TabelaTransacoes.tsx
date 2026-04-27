@@ -11,7 +11,7 @@ interface TransacaoExt {
   id: string;
   pacienteNome?: string;
   data_realizada: string;
-  tipo_receita: "particular" | "convenio";
+  tipo_receita: "particular" | "convenio" | "misto";
   valor_bruto: number;
   status_recebimento: string;
 }

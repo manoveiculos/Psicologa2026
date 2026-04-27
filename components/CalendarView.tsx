@@ -32,6 +32,11 @@ type Patient = {
   nome: string;
   valor_sessao_default: number | null;
   tipo_default: string;
+  tipo_atendimento?: string | null;
+  valor_convenio?: number | null;
+  duracao_convenio_min?: number | null;
+  valor_particular?: number | null;
+  duracao_particular_min?: number | null;
 };
 
 type Appt = {
@@ -268,15 +273,17 @@ export default function CalendarView({
           patients={patients}
           pending={pending}
           onClose={() => setNewRange(null)}
-          onCreate={(data) =>
+          onCreate={(data) => {
+            const startDate = new Date(newRange.start);
+            const endDate = new Date(startDate.getTime() + data.duracao_sessao_min * 60000);
             start(() =>
               createAppointment({
                 inicio: newRange.start,
-                fim: newRange.end,
+                fim: endDate.toISOString(),
                 ...data,
               } as any).then(() => setNewRange(null)),
-            )
-          }
+            );
+          }}
         />
       )}
 
@@ -557,35 +564,70 @@ function CreateDrawer({
   onCreate: (data: {
     titulo: string;
     tipo: string;
+    tipo_atendimento: string;
+    duracao_sessao_min: 30 | 50 | 60;
     patient_id?: string | null;
     valor_bruto?: number | null;
-    percentual_clinica?: number | null;
+    alerta_clinico?: string | null;
+    recorrencia?: "nenhuma" | "semanal" | "quinzenal";
+    recorrencia_ate?: string;
   }) => void;
 }) {
   const [form, setForm] = useState<{
     patient_id: string;
     titulo: string;
-    tipo: string;
+    tipo_atendimento: "particular" | "convenio" | "misto" | "bloqueio" | "pessoal";
+    duracao_sessao_min: 30 | 50 | 60;
     valor_bruto: number | "";
-    percentual_clinica: number;
+    alerta_clinico: string;
+    recorrencia: "nenhuma" | "semanal" | "quinzenal";
+    recorrencia_ate: string;
   }>({
     patient_id: "",
     titulo: "",
-    tipo: "particular",
+    tipo_atendimento: "particular",
+    duracao_sessao_min: 50,
     valor_bruto: "",
-    percentual_clinica: 0,
+    alerta_clinico: "",
+    recorrencia: "nenhuma",
+    recorrencia_ate: "",
   });
 
   function applyPatient(id: string) {
     const p = patients.find((x) => x.id === id);
+    if (!p) {
+      setForm((f) => ({ ...f, patient_id: "" }));
+      return;
+    }
+    const tipoAt = (p.tipo_atendimento ?? (p.tipo_default === "plano" ? "convenio" : "particular")) as any;
+    const dur: 30 | 50 | 60 = tipoAt === "convenio" ? ((p.duracao_convenio_min as any) ?? 30) : 50;
+    const val = tipoAt === "convenio"
+      ? (p.valor_convenio ?? p.valor_sessao_default ?? "")
+      : (p.valor_particular ?? p.valor_sessao_default ?? "");
     setForm((f) => ({
       ...f,
       patient_id: id,
-      tipo: p?.tipo_default ?? f.tipo,
-      valor_bruto: p?.valor_sessao_default ?? f.valor_bruto,
-      titulo: p?.nome ?? f.titulo,
+      tipo_atendimento: tipoAt,
+      duracao_sessao_min: dur,
+      valor_bruto: val === null ? "" : (val as any),
+      titulo: p.nome,
     }));
   }
+
+  function setTipo(t: typeof form.tipo_atendimento) {
+    const dur: 30 | 50 | 60 = t === "particular" ? 50 : t === "convenio" ? 30 : form.duracao_sessao_min;
+    setForm({ ...form, tipo_atendimento: t, duracao_sessao_min: dur });
+  }
+
+  const duracaoOptions: (30 | 50 | 60)[] =
+    form.tipo_atendimento === "convenio" ? [30, 60]
+    : form.tipo_atendimento === "particular" ? [50]
+    : [30, 50, 60];
+
+  const isMulti =
+    form.tipo_atendimento === "convenio" && form.duracao_sessao_min === 60;
+  const valorTotal =
+    form.valor_bruto === "" ? 0 : Number(form.valor_bruto) * (isMulti ? 2 : 1);
 
   return (
     <Drawer onClose={onClose}>
@@ -603,9 +645,7 @@ function CreateDrawer({
           >
             <option value="">— selecionar —</option>
             {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
+              <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
           </select>
         </FormField>
@@ -620,20 +660,33 @@ function CreateDrawer({
         </FormField>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Tipo">
+          <FormField label="Tipo de atendimento">
             <select
-              value={form.tipo}
-              onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+              value={form.tipo_atendimento}
+              onChange={(e) => setTipo(e.target.value as any)}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             >
               <option value="particular">Particular</option>
-              <option value="plano">Plano</option>
+              <option value="convenio">Convênio</option>
+              <option value="misto">Misto</option>
               <option value="bloqueio">Bloqueio</option>
               <option value="pessoal">Pessoal</option>
             </select>
           </FormField>
 
-          <FormField label="Valor (R$)">
+          <FormField label="Duração (min)">
+            <select
+              value={form.duracao_sessao_min}
+              onChange={(e) => setForm({ ...form, duracao_sessao_min: Number(e.target.value) as 30 | 50 | 60 })}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              {duracaoOptions.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label={isMulti ? "Valor por sessão (R$)" : "Valor (R$)"}>
             <input
               type="number"
               step="0.01"
@@ -647,6 +700,49 @@ function CreateDrawer({
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </FormField>
+
+          {isMulti && (
+            <div className="col-span-1">
+              <span className="block text-xs text-slate-500">Total (2 sessões)</span>
+              <p className="mt-1 px-3 py-2 text-sm font-medium text-brand">
+                R$ {valorTotal.toFixed(2)}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <FormField label="Alerta clínico (opcional)">
+          <textarea
+            rows={2}
+            value={form.alerta_clinico}
+            onChange={(e) => setForm({ ...form, alerta_clinico: e.target.value })}
+            placeholder="Observação importante para a sessão"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+        </FormField>
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Recorrência">
+            <select
+              value={form.recorrencia}
+              onChange={(e) => setForm({ ...form, recorrencia: e.target.value as any })}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="nenhuma">Sem repetir</option>
+              <option value="semanal">Toda semana</option>
+              <option value="quinzenal">A cada 15 dias</option>
+            </select>
+          </FormField>
+          {form.recorrencia !== "nenhuma" && (
+            <FormField label="Repetir até (opcional)">
+              <input
+                type="date"
+                value={form.recorrencia_ate}
+                onChange={(e) => setForm({ ...form, recorrencia_ate: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </FormField>
+          )}
         </div>
       </div>
 
@@ -659,9 +755,14 @@ function CreateDrawer({
           onClick={() =>
             onCreate({
               titulo: form.titulo,
-              tipo: form.tipo,
+              tipo: form.tipo_atendimento === "convenio" ? "plano" : form.tipo_atendimento,
+              tipo_atendimento: form.tipo_atendimento,
+              duracao_sessao_min: form.duracao_sessao_min,
               patient_id: form.patient_id || null,
               valor_bruto: form.valor_bruto === "" ? null : Number(form.valor_bruto),
+              alerta_clinico: form.alerta_clinico || null,
+              recorrencia: form.recorrencia,
+              recorrencia_ate: form.recorrencia_ate || undefined,
             })
           }
           className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
@@ -686,11 +787,35 @@ function QuickAddModal({
   onClose: () => void;
   onCreate: (data: any) => void;
 }) {
-  const [form, setForm] = useState({
+  const initialP = initialPatient ? patients.find(p => p.id === initialPatient.id) : null;
+  const initialTipo: "particular" | "convenio" =
+    (initialP?.tipo_atendimento as any) === "convenio" ||
+    initialP?.tipo_default === "plano" ? "convenio" : "particular";
+  const initialDur: 30 | 50 | 60 = initialTipo === "convenio"
+    ? ((initialP?.duracao_convenio_min as 30 | 60) ?? 30)
+    : 50;
+  const initialValor = initialTipo === "convenio"
+    ? (initialP?.valor_convenio ?? initialP?.valor_sessao_default ?? 0)
+    : (initialP?.valor_particular ?? initialP?.valor_sessao_default ?? 0);
+
+  const [form, setForm] = useState<{
+    patient_id: string;
+    inicio: string;
+    valor_bruto: number;
+    titulo: string;
+    tipo_atendimento: "particular" | "convenio" | "misto";
+    duracao_sessao_min: 30 | 50 | 60;
+    alerta_clinico: string;
+    recorrencia: "nenhuma" | "semanal" | "quinzenal";
+  }>({
     patient_id: initialPatient?.id ?? "",
-    inicio: formatISO(new Date()).slice(0, 16), // YYYY-MM-DDTHH:mm
-    valor_bruto: initialPatient ? (patients.find(p => p.id === initialPatient.id)?.valor_sessao_default ?? 0) : 0,
+    inicio: formatISO(new Date()).slice(0, 16),
+    valor_bruto: initialValor,
     titulo: initialPatient?.name ?? "",
+    tipo_atendimento: initialTipo,
+    duracao_sessao_min: initialDur,
+    alerta_clinico: "",
+    recorrencia: "nenhuma",
   });
 
   const [search, setSearch] = useState(initialPatient?.name ?? "");
@@ -699,11 +824,18 @@ function QuickAddModal({
   );
 
   function applyPatient(p: Patient) {
+    const tipoAt = ((p.tipo_atendimento as any) ?? (p.tipo_default === "plano" ? "convenio" : "particular")) as "particular" | "convenio" | "misto";
+    const dur: 30 | 50 | 60 = tipoAt === "convenio" ? ((p.duracao_convenio_min as 30 | 60) ?? 30) : 50;
+    const valor = tipoAt === "convenio"
+      ? (p.valor_convenio ?? p.valor_sessao_default ?? 0)
+      : (p.valor_particular ?? p.valor_sessao_default ?? 0);
     setForm({
       ...form,
       patient_id: p.id,
-      valor_bruto: p.valor_sessao_default ?? 0,
+      valor_bruto: valor,
       titulo: p.nome,
+      tipo_atendimento: tipoAt,
+      duracao_sessao_min: dur,
     });
     setSearch(p.nome);
   }
@@ -755,11 +887,69 @@ function QuickAddModal({
             />
           </FormField>
 
-          <FormField label="Valor (R$)">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Tipo">
+              <select
+                value={form.tipo_atendimento}
+                onChange={(e) => {
+                  const t = e.target.value as typeof form.tipo_atendimento;
+                  const dur: 30 | 50 | 60 = t === "particular" ? 50 : t === "convenio" ? 30 : form.duracao_sessao_min;
+                  setForm({ ...form, tipo_atendimento: t, duracao_sessao_min: dur });
+                }}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              >
+                <option value="particular">Particular</option>
+                <option value="convenio">Convênio</option>
+                <option value="misto">Misto</option>
+              </select>
+            </FormField>
+            <FormField label="Duração (min)">
+              <select
+                value={form.duracao_sessao_min}
+                onChange={(e) => setForm({ ...form, duracao_sessao_min: Number(e.target.value) as 30 | 50 | 60 })}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              >
+                {(form.tipo_atendimento === "convenio" ? [30, 60]
+                  : form.tipo_atendimento === "particular" ? [50]
+                  : [30, 50, 60]).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+
+          <FormField label={form.tipo_atendimento === "convenio" && form.duracao_sessao_min === 60 ? "Valor por sessão (R$)" : "Valor (R$)"}>
             <input
               type="number"
               value={form.valor_bruto}
               onChange={(e) => setForm({ ...form, valor_bruto: Number(e.target.value) })}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            />
+            {form.tipo_atendimento === "convenio" && form.duracao_sessao_min === 60 && (
+              <span className="mt-1 block text-[11px] text-brand font-medium">
+                Total: R$ {(form.valor_bruto * 2).toFixed(2)} (2 sessões)
+              </span>
+            )}
+          </FormField>
+
+          <FormField label="Recorrência">
+            <select
+              value={form.recorrencia}
+              onChange={(e) => setForm({ ...form, recorrencia: e.target.value as any })}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="nenhuma">Sem repetir</option>
+              <option value="semanal">Toda semana</option>
+              <option value="quinzenal">A cada 15 dias</option>
+            </select>
+          </FormField>
+
+          <FormField label="Alerta clínico (opcional)">
+            <textarea
+              rows={2}
+              value={form.alerta_clinico}
+              onChange={(e) => setForm({ ...form, alerta_clinico: e.target.value })}
+              placeholder="Observação importante para a sessão"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </FormField>
@@ -775,13 +965,20 @@ function QuickAddModal({
           <button
             disabled={pending || !form.patient_id || !form.inicio}
             onClick={() => {
-              const start = new Date(form.inicio);
-              const end = new Date(start.getTime() + 50 * 60000); // +50 min padrão
+              // Envia inicio como ISO local sem offset; a action interpreta em SP
+              const fim = new Date(new Date(form.inicio).getTime() + form.duracao_sessao_min * 60000);
+              const fimLocal = formatISO(fim);
               onCreate({
-                ...form,
-                fim: end.toISOString(),
-                inicio: start.toISOString(),
-                tipo: (patients.find(p => p.id === form.patient_id)?.tipo_default ?? "particular") as any,
+                inicio: form.inicio,
+                fim: fimLocal,
+                titulo: form.titulo,
+                tipo: form.tipo_atendimento === "convenio" ? "plano" : form.tipo_atendimento,
+                tipo_atendimento: form.tipo_atendimento,
+                duracao_sessao_min: form.duracao_sessao_min,
+                patient_id: form.patient_id,
+                valor_bruto: form.valor_bruto,
+                alerta_clinico: form.alerta_clinico || null,
+                recorrencia: form.recorrencia,
                 percentual_clinica: 0,
               });
             }}

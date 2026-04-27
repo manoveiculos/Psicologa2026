@@ -1,13 +1,15 @@
 
 
-export type TipoReceita = 'particular' | 'convenio';
+export type TipoReceita = 'particular' | 'convenio' | 'misto';
 export type StatusRecebimento = 'pendente' | 'pago' | 'atrasado' | 'glosado';
+export type StatusFinanceiro = 'pago' | 'pendente' | 'aguardando_convenio';
 
 export interface Transacao {
   id: string;
   valor_bruto: number;
   tipo_receita: TipoReceita;
   status_recebimento: StatusRecebimento;
+  status_financeiro?: StatusFinanceiro;
   data_prevista?: string;
   data_realizada: string;
   porcentagem_repasse?: number;
@@ -47,7 +49,7 @@ export function calcularResumoFinanceiro(
     .reduce((acc, t) => acc + t.valor_bruto, 0);
 
   const faturamentoConvenio = transacoes
-    .filter(t => t.tipo_receita === 'convenio')
+    .filter(t => t.tipo_receita === 'convenio' || t.tipo_receita === 'misto')
     .reduce((acc, t) => acc + t.valor_bruto, 0);
 
   const faturamentoBruto = faturamentoParticular + faturamentoConvenio;

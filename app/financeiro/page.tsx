@@ -91,17 +91,21 @@ export default async function FinanceiroPage(props: { searchParams: Promise<Page
   ]);
 
   // Mapeamento para o tipo Transacao
-  const transacoes: (Transacao & { pacienteNome?: string })[] = (appointments ?? []).map((a) => ({
-    id: a.id,
-    valor_bruto: Number(a.valor_bruto ?? 0),
-    tipo_receita: (a.tipo === "plano" ? "convenio" : a.tipo) as any,
-    status_recebimento: a.status_recebimento ?? "pendente",
-    data_prevista: a.data_prevista,
-    data_realizada: a.inicio,
-    porcentagem_repasse: Number(a.porcentagem_repasse ?? 0),
-    id_profissional: a.id_profissional,
-    pacienteNome: (a as any).patient?.nome,
-  }));
+  const transacoes: (Transacao & { pacienteNome?: string })[] = (appointments ?? []).map((a) => {
+    const tipoAt = a.tipo_atendimento ?? (a.tipo === "plano" ? "convenio" : a.tipo);
+    return {
+      id: a.id,
+      valor_bruto: Number(a.valor_bruto ?? 0),
+      tipo_receita: (tipoAt === "particular" || tipoAt === "convenio" || tipoAt === "misto" ? tipoAt : "particular") as any,
+      status_recebimento: a.status_recebimento ?? "pendente",
+      status_financeiro: a.status_financeiro,
+      data_prevista: a.data_prevista,
+      data_realizada: a.inicio,
+      porcentagem_repasse: Number(a.porcentagem_repasse ?? 0),
+      id_profissional: a.id_profissional,
+      pacienteNome: (a as any).patient?.nome,
+    };
+  });
 
   const despesas: Despesa[] = (rawDespesas ?? []).map((d) => ({
     id: d.id,
