@@ -9,11 +9,13 @@ import { Settings, Shield, Globe, Bell, Zap, Clock } from "lucide-react";
 import { WorkingHoursManager } from "./WorkingHoursManager";
 import { HorarioTrabalho } from "@/lib/slots";
 import { RealTimeSyncButton } from "./RealTimeSyncButton";
+import { DisconnectGoogleButton } from "./DisconnectGoogleButton";
 
 export const dynamic = "force-dynamic";
 
-import { DisconnectGoogleButton } from "./DisconnectGoogleButton";
 import { saveGeneralPreferencesAction, saveWhatsAppSettingsAction } from "./actions";
+import { GeneralPreferencesForm } from "./GeneralPreferencesForm";
+import { WhatsAppSettingsForm } from "./WhatsAppSettingsForm";
 
 export default async function ConfiguracoesPage() {
   const user = await getAuthenticatedUser();
@@ -82,17 +84,7 @@ export default async function ConfiguracoesPage() {
             </div>
             <h3 className="font-bold text-slate-800">Preferências Gerais</h3>
           </div>
-          <form action={saveGeneralPreferencesAction} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Duração sessão (min)" name="duracao" type="number" defaultValue={s?.duracao_sessao_minutos ?? 50} />
-              <Field label="Imposto (%)" name="aliquota" type="number" step="0.01" defaultValue={s?.aliquota_imposto ?? 0} />
-            </div>
-            <Field label="Timezone" name="tz" defaultValue={s?.timezone ?? "America/Sao_Paulo"} />
-            <Field label="Seu WhatsApp (Notificações)" name="wp_prof" defaultValue={s?.whatsapp_profissional ?? ""} placeholder="Ex: 5511999999999" />
-            <button className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-xs hover:bg-slate-700 transition-colors mt-2">
-              Salvar Preferências
-            </button>
-          </form>
+          <GeneralPreferencesForm settings={s || {}} />
         </section>
       </div>
 
@@ -157,32 +149,18 @@ export default async function ConfiguracoesPage() {
               userPhone={s?.whatsapp_profissional}
             />
           </div>
-          <form action={saveWhatsAppSettingsAction} className="space-y-6">
-            <div className="grid grid-cols-1 gap-4">
-              <Field label="URL da API" name="evo_url" defaultValue={s?.evolution_url ?? ""} placeholder="https://api..." />
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="API Key" name="evo_key" type="password" defaultValue={s?.evolution_api_key ?? ""} />
-                <Field label="Nome da Instância" name="evo_instance" defaultValue={s?.evolution_instance ?? ""} />
-              </div>
-            </div>
-            
-            <button className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-emerald-700 transition-all">
-              Salvar Credenciais WhatsApp
-            </button>
-          </form>
+          <WhatsAppSettingsForm 
+            settings={{
+              evolution_url: s?.evolution_url,
+              evolution_api_key: s?.evolution_api_key,
+              evolution_instance: s?.evolution_instance
+            }} 
+          />
         </div>
       </section>
     </div>
   );
 }
 
-function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  const { label, ...rest } = props;
-  return (
-    <label className="block space-y-1.5">
-      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{label}</span>
-      <input {...rest} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all bg-white" />
-    </label>
-  );
-}
+
 
